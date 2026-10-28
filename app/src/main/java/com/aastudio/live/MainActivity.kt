@@ -24,6 +24,20 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = ProjectStore(this)
 
+        // Ikon ditekan: langsung tampilkan editor di atas aplikasi lain, tanpa membuka layar aplikasi.
+        if (!intent.getBooleanExtra(EXTRA_NO_AUTO, false)) {
+            if (Settings.canDrawOverlays(this)) {
+                OverlayService.launchDefault(this)
+            } else {
+                startActivity(
+                    Intent(this, OverlaySettingsActivity::class.java)
+                        .putExtra(OverlaySettingsActivity.EXTRA_LAUNCH_AFTER, true)
+                )
+            }
+            finish()
+            return
+        }
+
         val scroll = ScrollView(this)
         scroll.setBackgroundColor(Ui.WHITE)
         val col = LinearLayout(this)
@@ -111,9 +125,19 @@ class MainActivity : Activity() {
         r.addView(info, Ui.lp(0, Ui.WRAP, 1f))
 
         val size = Ui.dp(this, 40)
+        r.addView(Ui.iconBtn(this, "▶") { launchOverlay(p) }, Ui.lpM(size, size, 0f, Ui.dp(this, 4), 0, 0, 0))
         r.addView(Ui.iconBtn(this, "✎") { showRenameDialog(p) }, Ui.lpM(size, size, 0f, Ui.dp(this, 4), 0, 0, 0))
         r.addView(Ui.iconBtn(this, "🗑") { confirmDelete(p) }, Ui.lpM(size, size, 0f, Ui.dp(this, 4), 0, 0, 0))
         return r
+    }
+
+    private fun launchOverlay(p: Project) {
+        if (!Settings.canDrawOverlays(this)) {
+            startActivity(Intent(this, OverlaySettingsActivity::class.java))
+            return
+        }
+        OverlayService.start(this, p.id)
+        moveTaskToBack(true)
     }
 
     private fun open(p: Project) {
@@ -170,5 +194,9 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("Batal", null)
             .show()
+    }
+
+    companion object {
+        const val EXTRA_NO_AUTO = "no_auto"
     }
 }

@@ -66,7 +66,13 @@ class OverlaySettingsActivity : Activity() {
             ),
             Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 14), 0, Ui.dp(this, 14))
         )
-        col.addView(Ui.button(this, "Kembali") { finish() }, Ui.lp(Ui.MATCH, Ui.WRAP))
+        col.addView(
+            Ui.button(this, "Buka daftar proyek") {
+                startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_AUTO, true))
+            },
+            Ui.lp(Ui.MATCH, Ui.WRAP)
+        )
+        col.addView(Ui.button(this, "Kembali") { finish() }, Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 8), 0, 0))
 
         setContentView(scroll)
     }
@@ -74,6 +80,11 @@ class OverlaySettingsActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        // Datang dari ikon aplikasi: begitu izin aktif, langsung tampilkan editor di atas aplikasi lain.
+        if (intent.getBooleanExtra(EXTRA_LAUNCH_AFTER, false) && Settings.canDrawOverlays(this)) {
+            OverlayService.launchDefault(this)
+            finish()
+        }
     }
 
     private fun refresh() {
@@ -82,7 +93,7 @@ class OverlaySettingsActivity : Activity() {
             status.text = "Status: AKTIF"
             status.setTextColor(Ui.OK)
             status.background = Ui.box(this, Ui.WHITE, Ui.OK)
-            help.text = "Izin sudah diberikan. Anda bisa menjalankan overlay dari Editor."
+            help.text = "Izin sudah diberikan. Tekan ikon AA Studio untuk menampilkan editor di atas aplikasi lain."
         } else {
             status.text = "Status: BELUM AKTIF"
             status.setTextColor(Ui.BAD)
@@ -103,5 +114,9 @@ class OverlaySettingsActivity : Activity() {
                 "Pengaturan > Aplikasi > AA Studio > Tampil di atas aplikasi lain (nama menu bisa berbeda " +
                 "di tiap merek HP). Editor dan Web Source tetap bisa dipakai tanpa izin ini."
         }
+    }
+
+    companion object {
+        const val EXTRA_LAUNCH_AFTER = "launch_after"
     }
 }

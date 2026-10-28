@@ -10,48 +10,70 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Point
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
-import kotlin.math.max
+import kotlin.math.abs
 
 /**
- * Overlay melayang sungguhan: jendela TYPE_APPLICATION_OVERLAY lewat WindowManager.
- * Berjalan sebagai foreground service dengan notifikasi (ada tombol Hentikan).
- * Header jendela: geser untuk memindahkan, − / + ukuran, Suara (mute), Sentuh (izinkan/blokir
- * sentuhan ke halaman web), ↻ muat ulang, ✕ tutup.
+ * Overlay sungguhan (TYPE_APPLICATION_OVERLAY) lewat WindowManager, berjalan sebagai foreground service.
+ *
+ * - Mode EDITOR: satu jendela layar penuh ([EditLayer]) tempat kotak Web Source diatur langsung
+ *   di atas aplikasi lain. Tidak ada WebView yang dimuat (hemat RAM).
+ * - Mode STREAM: satu jendela per elemen yang tampil (WebView). Sentuhan menembus ke aplikasi di
+ *   bawahnya kecuali pengguna menyalakan "Sentuh". Bubble "AA" kecil menyediakan Editor / Mute / Sentuh / Stop.
  */
-class OverlayService : Service() {
+class OverlayService : Service(), EditLayer.Host {
 
-    private var wm: WindowManager? = null
-    private var root: LinearLayout? = null
-    private var header: LinearLayout? = null
-    private var composition: CompositionView? = null
-    private var lp: WindowManager.LayoutParams? = null
+    private enum class Mode { EDIT, RUN }
 
-    private var widthPercent = 60
-    private var touchEnabled = false
+    private class Stream(val cell: SourceCell, val lp: WindowManager.LayoutParams)
+
+    private lateinit var wm: WindowManager
+    private lateinit var store: ProjectStore
+    private val handler = Handler(Looper.getMainLooper())
+
+    private var project: Project? = null
+    private var mode = Mode.EDIT
+
+    private var editLayer: EditLayer? = null
+    private var editLp: WindowManager.LayoutParams? = null
+    private val streams = ArrayList<Stream>()
+    private var bubble: LinearLayout? = null
+    private var bubbleLp: WindowManager.LayoutParams? = null
+    private var bubbleMenu: LinearLayout? = null
+    private var muteLabel: TextView? = null
+    private var touchLabel: TextView? = null
+
     private var muted = false
-    private var dragX = 0f
-    private var dragY = 0f
-    private var startPX = 0
-    private var startPY = 0
+    private var touchEnabled = false
 
-    private var muteBtn: TextView? = null
-    private var touchBtn: TextView? = null
+    private val saveRunnable = Runnable { project?.let { store.save(it) } }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        store = ProjectStore(this)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
+        val action = intent?.action
+        if (action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -59,31 +81,31 @@ class OverlayService : Service() {
         // Wajib segera memanggil startForeground setelah startForegroundService.
         startAsForeground()
 
-        val id = intent?.getStringExtra(EXTRA_PROJECT)
-        if (id == null) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
         if (!Settings.canDrawOverlays(this)) {
             Ui.toast(this, "Izin tampil di atas aplikasi lain belum aktif")
             stopSelf()
             return START_NOT_STICKY
         }
-        val project = ProjectStore(this).load(id)
-        if (project == null) {
+
+        val id = intent?.getStringExtra(EXTRA_PROJECT)
+        if (id != null && id != project?.id) {
+            flushSave()
+            clearWindows()
+            project = store.load(id)
+        }
+        val p = project
+        if (p == null) {
             Ui.toast(this, "Proyek tidak ditemukan")
             stopSelf()
             return START_NOT_STICKY
         }
 
         try {
-            if (root == null) {
-                widthPercent = project.overlay.widthPercent
-                touchEnabled = project.overlay.touchEnabled
-                buildOverlay()
+            if (running && action == ACTION_RELOAD) {
+                project = store.load(p.id) ?: p
             }
-            composition?.interactive = touchEnabled
-            composition?.setProject(project)
+            touchEnabled = project?.overlay?.touchEnabled ?: false
+            showMode(if (action == ACTION_RUN) Mode.RUN else Mode.EDIT)
             running = true
         } catch (e: Exception) {
             Ui.toast(this, "Gagal menampilkan overlay: ${e.message}")
@@ -92,30 +114,40 @@ class OverlayService : Service() {
         return START_NOT_STICKY
     }
 
+    // ------------------------------------------------------------------ notifikasi
+
     private fun startAsForeground() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Overlay AA Studio", NotificationManager.IMPORTANCE_LOW)
         )
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val stopIntent = PendingIntent.getService(
-            this, 1,
-            Intent(this, OverlayService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            this, 1, Intent(this, OverlayService::class.java).setAction(ACTION_STOP), flags
+        )
+        val editIntent = PendingIntent.getForegroundService(
+            this, 3, Intent(this, OverlayService::class.java).setAction(ACTION_EDIT), flags
         )
         val openIntent = PendingIntent.getActivity(
             this, 2,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_NO_AUTO, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            flags
         )
+        val editAction = Notification.Action.Builder(
+            Icon.createWithResource(this, R.drawable.ic_notif), "Editor", editIntent
+        ).build()
         val stopAction = Notification.Action.Builder(
             Icon.createWithResource(this, R.drawable.ic_notif), "Hentikan", stopIntent
         ).build()
         val n = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle("AA Studio — overlay aktif")
-            .setContentText("Overlay tampil di atas aplikasi lain")
+            .setContentText("Ketuk untuk daftar proyek")
             .setContentIntent(openIntent)
             .setOngoing(true)
+            .addAction(editAction)
             .addAction(stopAction)
             .build()
         if (Build.VERSION.SDK_INT >= 29) {
@@ -125,175 +157,294 @@ class OverlayService : Service() {
         }
     }
 
+    // ------------------------------------------------------------------ mode
+
+    private fun screenSize(): Point {
+        return if (Build.VERSION.SDK_INT >= 30) {
+            val b = wm.maximumWindowMetrics.bounds
+            Point(b.width(), b.height())
+        } else {
+            val dm = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealMetrics(dm)
+            Point(dm.widthPixels, dm.heightPixels)
+        }
+    }
+
+    private fun baseFlags(): Int =
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+
+    private fun newParams(w: Int, h: Int, flags: Int): WindowManager.LayoutParams {
+        val p = WindowManager.LayoutParams(
+            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, flags, PixelFormat.TRANSLUCENT
+        )
+        p.gravity = Gravity.TOP or Gravity.START
+        if (Build.VERSION.SDK_INT >= 28) {
+            p.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        return p
+    }
+
+    private fun showMode(m: Mode) {
+        val p = project ?: return
+        clearWindows()
+        mode = m
+        val size = screenSize()
+        if (m == Mode.EDIT) {
+            val lp = newParams(size.x, size.y, baseFlags())
+            lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+            val layer = EditLayer(this, p, size.x, size.y, this)
+            editLayer = layer
+            editLp = lp
+            wm.addView(layer, lp)
+            layer.requestFocus()
+        } else {
+            val sx = size.x / CANVAS_W.toFloat()
+            val sy = size.y / CANVAS_H.toFloat()
+            for (item in p.items) {
+                if (!item.visible || item.url.isBlank()) continue
+                val w = (item.w * sx).toInt().coerceAtLeast(Ui.dp(this, 20))
+                val h = (item.h * sy).toInt().coerceAtLeast(Ui.dp(this, 20))
+                var flags = baseFlags() or
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                if (!touchEnabled) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                val lp = newParams(w, h, flags)
+                lp.x = (item.x * sx).toInt()
+                lp.y = (item.y * sy).toInt()
+                val cell = SourceCell(this, item.copy())
+                cell.applyUiScale(1f)
+                cell.applyAudio(p.audio, muted)
+                wm.addView(cell, lp)
+                cell.load()
+                streams.add(Stream(cell, lp))
+            }
+            if (streams.isEmpty()) {
+                Ui.toast(this, "Belum ada Web Source yang tampil. Buka Editor untuk menambah.")
+            }
+            addBubble(size)
+        }
+    }
+
+    private fun clearWindows() {
+        handler.removeCallbacks(saveRunnable)
+        editLayer?.let {
+            try {
+                wm.removeView(it)
+            } catch (e: IllegalArgumentException) {
+                // sudah dilepas
+            }
+        }
+        editLayer = null
+        editLp = null
+        for (s in streams) {
+            try {
+                wm.removeView(s.cell)
+            } catch (e: IllegalArgumentException) {
+                // sudah dilepas
+            }
+            s.cell.release()
+        }
+        streams.clear()
+        bubble?.let {
+            try {
+                wm.removeView(it)
+            } catch (e: IllegalArgumentException) {
+                // sudah dilepas
+            }
+        }
+        bubble = null
+        bubbleLp = null
+        bubbleMenu = null
+        muteLabel = null
+        touchLabel = null
+    }
+
+    // ------------------------------------------------------------------ bubble kontrol (mode Stream)
+
     private fun dp(v: Int): Int = Ui.dp(this, v)
 
-    private fun headerButton(label: String, onClick: (TextView) -> Unit): TextView {
+    private fun menuItem(label: String, onClick: (TextView) -> Unit): TextView {
         val t = TextView(this)
         t.text = label
         t.textSize = 13f
         t.setTextColor(Color.WHITE)
         t.gravity = Gravity.CENTER
-        t.minWidth = dp(38)
-        t.setPadding(dp(6), 0, dp(6), 0)
-        t.isClickable = true
+        t.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        t.setPadding(dp(12), 0, dp(12), 0)
+        val g = GradientDrawable()
+        g.cornerRadius = dp(18).toFloat()
+        g.setColor(Color.parseColor("#E6111111"))
+        t.background = g
         t.setOnClickListener { onClick(t) }
         return t
     }
 
-    private fun buildOverlay() {
-        val manager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        wm = manager
+    private fun addBubble(size: Point) {
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.HORIZONTAL
+        root.gravity = Gravity.CENTER_VERTICAL
 
-        val hdr = LinearLayout(this)
-        hdr.orientation = LinearLayout.HORIZONTAL
-        hdr.gravity = Gravity.CENTER_VERTICAL
-        hdr.setBackgroundColor(Color.parseColor("#E6111111"))
+        val dot = TextView(this)
+        dot.text = "AA"
+        dot.textSize = 15f
+        dot.gravity = Gravity.CENTER
+        dot.setTextColor(Color.BLACK)
+        dot.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        val g = GradientDrawable()
+        g.shape = GradientDrawable.OVAL
+        g.setColor(Color.WHITE)
+        g.setStroke(dp(2), Color.BLACK)
+        dot.background = g
+        root.addView(dot, LinearLayout.LayoutParams(dp(46), dp(46)))
 
-        val title = TextView(this)
-        title.text = "AA Studio"
-        title.textSize = 12f
-        title.setTextColor(Color.WHITE)
-        title.setPadding(dp(8), 0, dp(4), 0)
-        title.maxLines = 1
-        hdr.addView(title, LinearLayout.LayoutParams(0, Ui.MATCH, 1f))
+        val menu = LinearLayout(this)
+        menu.orientation = LinearLayout.HORIZONTAL
+        menu.visibility = View.GONE
+        val itemLp = { LinearLayout.LayoutParams(Ui.WRAP, dp(36)).also { it.leftMargin = dp(6) } }
+        menu.addView(menuItem("Editor") { showMode(Mode.EDIT) }, itemLp())
+        val mt = menuItem(if (muted) "Mute" else "Suara") { toggleMute() }
+        muteLabel = mt
+        menu.addView(mt, itemLp())
+        val tt = menuItem(if (touchEnabled) "Sentuh:ON" else "Sentuh:OFF") { toggleTouch() }
+        touchLabel = tt
+        menu.addView(tt, itemLp())
+        menu.addView(menuItem("Stop") { stopSelf() }, itemLp())
+        bubbleMenu = menu
+        root.addView(menu, LinearLayout.LayoutParams(Ui.WRAP, Ui.WRAP))
 
-        hdr.addView(headerButton("−") { changeWidth(-10) }, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        hdr.addView(headerButton("+") { changeWidth(10) }, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        val mb = headerButton(if (muted) "Mute" else "Suara") { toggleMute() }
-        muteBtn = mb
-        hdr.addView(mb, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        val tb = headerButton(if (touchEnabled) "Sentuh:ON" else "Sentuh:OFF") { toggleTouch() }
-        touchBtn = tb
-        hdr.addView(tb, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        hdr.addView(headerButton("↻") { composition?.reloadAll() }, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        hdr.addView(headerButton("✕") { stopSelf() }, LinearLayout.LayoutParams(Ui.WRAP, Ui.MATCH))
-        header = hdr
-
-        val comp = CompositionView(this)
-        comp.setBackgroundColor(Color.argb(40, 0, 0, 0))
-        comp.interactive = touchEnabled
-        composition = comp
-
-        val container = LinearLayout(this)
-        container.orientation = LinearLayout.VERTICAL
-        container.addView(hdr, LinearLayout.LayoutParams(Ui.MATCH, dp(36)))
-        container.addView(comp, LinearLayout.LayoutParams(Ui.MATCH, 100))
-        root = container
-
-        val params = WindowManager.LayoutParams(
-            Ui.WRAP, Ui.WRAP,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
+        val lp = newParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            baseFlags() or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
         )
-        params.gravity = Gravity.TOP or Gravity.START
-        params.x = dp(16)
-        params.y = dp(80)
-        lp = params
+        lp.x = dp(8)
+        lp.y = (size.y * 0.25f).toInt()
+        bubbleLp = lp
+        bubble = root
 
-        hdr.setOnTouchListener { _, ev ->
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var moved = false
+        dot.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    dragX = ev.rawX
-                    dragY = ev.rawY
-                    startPX = params.x
-                    startPY = params.y
+                    downX = ev.rawX
+                    downY = ev.rawY
+                    startX = lp.x
+                    startY = lp.y
+                    moved = false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dm = resources.displayMetrics
-                    val maxX = max(0, dm.widthPixels - params.width)
-                    val maxY = max(0, dm.heightPixels - params.height)
-                    params.x = (startPX + (ev.rawX - dragX)).toInt().coerceIn(0, maxX)
-                    params.y = (startPY + (ev.rawY - dragY)).toInt().coerceIn(0, maxY)
-                    try {
-                        manager.updateViewLayout(container, params)
-                    } catch (e: IllegalArgumentException) {
-                        // jendela sudah dilepas
+                    val dx = ev.rawX - downX
+                    val dy = ev.rawY - downY
+                    if (moved || abs(dx) > dp(6) || abs(dy) > dp(6)) {
+                        moved = true
+                        val s = screenSize()
+                        lp.x = (startX + dx).toInt().coerceIn(0, (s.x - dp(46)).coerceAtLeast(0))
+                        lp.y = (startY + dy).toInt().coerceIn(0, (s.y - dp(46)).coerceAtLeast(0))
+                        try {
+                            wm.updateViewLayout(root, lp)
+                        } catch (e: IllegalArgumentException) {
+                            // jendela sudah dilepas
+                        }
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!moved) {
+                        menu.visibility = if (menu.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                        // menu ke kiri bila bubble dekat tepi kanan
+                        try {
+                            wm.updateViewLayout(root, lp)
+                        } catch (e: IllegalArgumentException) {
+                            // jendela sudah dilepas
+                        }
                     }
                 }
             }
             true
         }
-
-        applySize(params)
-        manager.addView(container, params)
-    }
-
-    /** Menghitung ukuran jendela dari persentase lebar layar; tinggi mengikuti rasio 16:9. */
-    private fun applySize(params: WindowManager.LayoutParams) {
-        val container = root ?: return
-        val comp = composition ?: return
-        val hdr = header ?: return
-        val dm = resources.displayMetrics
-        val screenW = dm.widthPixels
-        val minW = dp(260)
-        val wpx = (screenW * widthPercent / 100f).toInt().coerceIn(minW, max(minW, screenW))
-        val compH = (wpx * CANVAS_H / CANVAS_W.toFloat()).toInt()
-        hdr.layoutParams = LinearLayout.LayoutParams(wpx, dp(36))
-        comp.layoutParams = LinearLayout.LayoutParams(wpx, compH)
-        params.width = wpx
-        params.height = dp(36) + compH
-        params.x = params.x.coerceIn(0, max(0, screenW - wpx))
-        params.y = params.y.coerceIn(0, max(0, dm.heightPixels - params.height))
-        if (container.isAttachedToWindow) {
-            try {
-                wm?.updateViewLayout(container, params)
-            } catch (e: IllegalArgumentException) {
-                // abaikan
-            }
-        }
-    }
-
-    private fun changeWidth(delta: Int) {
-        widthPercent = (widthPercent + delta).coerceIn(30, 100)
-        lp?.let { applySize(it) }
+        wm.addView(root, lp)
     }
 
     private fun toggleMute() {
         muted = !muted
-        composition?.setForceMute(muted)
-        muteBtn?.text = if (muted) "Mute" else "Suara"
+        val p = project ?: return
+        for (s in streams) s.cell.applyAudio(p.audio, muted)
+        muteLabel?.text = if (muted) "Mute" else "Suara"
     }
 
     private fun toggleTouch() {
         touchEnabled = !touchEnabled
-        composition?.interactive = touchEnabled
-        touchBtn?.text = if (touchEnabled) "Sentuh:ON" else "Sentuh:OFF"
+        project?.overlay?.touchEnabled = touchEnabled
+        scheduleSave()
+        for (s in streams) {
+            s.lp.flags = if (touchEnabled) {
+                s.lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            } else {
+                s.lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            }
+            try {
+                wm.updateViewLayout(s.cell, s.lp)
+            } catch (e: IllegalArgumentException) {
+                // jendela sudah dilepas
+            }
+        }
+        touchLabel?.text = if (touchEnabled) "Sentuh:ON" else "Sentuh:OFF"
     }
+
+    // ------------------------------------------------------------------ EditLayer.Host
+
+    override fun onChanged() {
+        scheduleSave()
+    }
+
+    override fun onRequestStream() {
+        // Ditunda agar tidak melepas jendela di tengah dispatch sentuhan/tombol miliknya sendiri.
+        handler.post {
+            val p = project
+            if (p != null && mode == Mode.EDIT) {
+                flushSave()
+                showMode(Mode.RUN)
+            }
+        }
+    }
+
+    private fun scheduleSave() {
+        handler.removeCallbacks(saveRunnable)
+        handler.postDelayed(saveRunnable, 600)
+    }
+
+    private fun flushSave() {
+        handler.removeCallbacks(saveRunnable)
+        project?.let { store.save(it) }
+    }
+
+    // ------------------------------------------------------------------ lifecycle
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        lp?.let { applySize(it) }
-    }
-
-    private fun removeOverlay() {
-        composition?.release()
-        composition = null
-        val r = root
-        if (r != null) {
-            try {
-                wm?.removeView(r)
-            } catch (e: IllegalArgumentException) {
-                // sudah dilepas
-            }
+        if (project != null && running) {
+            flushSave()
+            showMode(mode)
         }
-        root = null
-        header = null
-        muteBtn = null
-        touchBtn = null
     }
 
     override fun onDestroy() {
-        removeOverlay()
+        flushSave()
+        clearWindows()
         running = false
+        project = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
     companion object {
         const val ACTION_START = "com.aastudio.live.START"
+        const val ACTION_EDIT = "com.aastudio.live.EDIT"
+        const val ACTION_RUN = "com.aastudio.live.RUN"
+        const val ACTION_RELOAD = "com.aastudio.live.RELOAD"
         const val ACTION_STOP = "com.aastudio.live.STOP"
         const val EXTRA_PROJECT = "project_id"
         private const val CHANNEL_ID = "overlay"
@@ -302,11 +453,19 @@ class OverlayService : Service() {
         @Volatile
         var running: Boolean = false
 
-        fun start(ctx: Context, projectId: String) {
+        /** Menjalankan overlay untuk satu proyek. Default: mode Editor di atas aplikasi lain. */
+        fun start(ctx: Context, projectId: String, run: Boolean = false) {
             val i = Intent(ctx, OverlayService::class.java)
-                .setAction(ACTION_START)
+                .setAction(if (run) ACTION_RUN else ACTION_EDIT)
                 .putExtra(EXTRA_PROJECT, projectId)
             ctx.startForegroundService(i)
+        }
+
+        /** Dipakai saat ikon aplikasi ditekan: proyek terbaru, atau buat "Proyek 1" bila belum ada. */
+        fun launchDefault(ctx: Context) {
+            val store = ProjectStore(ctx)
+            val p = store.list().firstOrNull() ?: store.create("Proyek 1")
+            start(ctx, p.id)
         }
 
         fun stop(ctx: Context) {

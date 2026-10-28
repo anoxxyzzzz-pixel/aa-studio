@@ -123,7 +123,7 @@ class EditorActivity : Activity(), CanvasView.Listener {
         btnPreview = Ui.button(this, "Preview") { setPreview(!previewOn) }
         bar2.addView(btnPreview, Ui.lpM(Ui.WRAP, Ui.WRAP, 0f, m, 0, m, 0))
         bar2.addView(Ui.button(this, "Muat ulang") { reloadPreview() }, Ui.lpM(Ui.WRAP, Ui.WRAP, 0f, m, 0, m, 0))
-        btnOverlay = Ui.button(this, "Jalankan overlay") { toggleOverlay() }
+        btnOverlay = Ui.button(this, "Overlay di layar") { toggleOverlay() }
         bar2.addView(btnOverlay, Ui.lpM(Ui.WRAP, Ui.WRAP, 0f, m, 0, m, 0))
         bar2.addView(Ui.button(this, "Audio") { openAudio() }, Ui.lpM(Ui.WRAP, Ui.WRAP, 0f, m, 0, m, 0))
         bar2.addView(Ui.button(this, "Izin overlay") {
@@ -588,10 +588,6 @@ class EditorActivity : Activity(), CanvasView.Listener {
             Ui.toast(this, "Gagal menyimpan proyek")
             return
         }
-        // Overlay yang sedang berjalan ikut diperbarui (WebView yang URL-nya sama tidak dimuat ulang).
-        if (OverlayService.running && Settings.canDrawOverlays(this)) {
-            OverlayService.start(this, project.id)
-        }
     }
 
     private fun finishWithSave() {
@@ -682,7 +678,7 @@ class EditorActivity : Activity(), CanvasView.Listener {
     // ---------------------------------------------------------------- Overlay & audio
 
     private fun updateOverlayButton() {
-        btnOverlay.text = if (OverlayService.running) "Hentikan overlay" else "Jalankan overlay"
+        btnOverlay.text = if (OverlayService.running) "Hentikan overlay" else "Overlay di layar"
     }
 
     private fun toggleOverlay() {

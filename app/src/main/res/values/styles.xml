@@ -6,4 +6,11 @@
         <item name="android:statusBarColor">#FFFFFF</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
     </style>
+
+    <!-- Tema transparan: ikon ditekan langsung membuka overlay tanpa kilatan layar putih. -->
+    <style name="AppTheme.Launch" parent="AppTheme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>
