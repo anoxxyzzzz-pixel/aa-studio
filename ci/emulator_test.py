@@ -125,6 +125,23 @@ sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
 out = sh(f"appops get {PKG} SYSTEM_ALERT_WINDOW")
 check("Izin overlay diberikan (appops)", "allow" in out, out.strip())
 
+def snap(name):
+    """Tangkap layar, kecilkan, cetak sebagai base64 (dibaca dari anotasi)."""
+    try:
+        import base64, io
+        from PIL import Image
+        run("adb exec-out screencap -p > /tmp/snap.png")
+        im_ = Image.open("/tmp/snap.png").convert("RGB")
+        im_.thumbnail((234, 520))
+        buf = io.BytesIO()
+        im_.save(buf, "JPEG", quality=45)
+        b = base64.b64encode(buf.getvalue()).decode()
+        for i in range(0, len(b), 180):
+            print(f"IMG {name} {i // 180:03d} {b[i:i + 180]}", flush=True)
+    except Exception as e:
+        info(f"snap {name} gagal: {e}")
+
+
 # ---------------------------------------------------------------- 1. ikon -> overlay langsung
 section("1. Tekan ikon -> overlay editor langsung")
 sh("am start -W -n %s/.MainActivity" % PKG)
@@ -160,6 +177,8 @@ sh("am start-foreground-service -a com.aastudio.live.EDIT --es project_id seed00
 time.sleep(4)
 check("Overlay editor aktif untuk proyek seed", len(overlay_windows()) >= 1, "")
 
+time.sleep(2)
+snap("edit")
 lx = lambda L: L * W / 1920.0
 ly = lambda L: L * H / 1080.0
 
@@ -231,6 +250,7 @@ check("Jendela Stream tampil (1 per elemen + bubble)", len(ow) >= n_items, f"{le
 for h, a in ow:
     info(("NOT_TOUCHABLE " if "NOT_TOUCHABLE" in a or "fl=" in a and "0x" in a else "") + a[:230])
 shot = run("adb exec-out screencap -p > /tmp/s.png; ls -l /tmp/s.png")
+snap("stream")
 try:
     import importlib
     try:
