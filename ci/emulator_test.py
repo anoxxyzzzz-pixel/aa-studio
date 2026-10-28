@@ -33,18 +33,18 @@ def section(t):
 
 def windows():
     out = run("adb shell dumpsys window windows", 60)
-    blocks = out.split("Window #")
-    mine = [b for b in blocks if PKG in b.split("\n")[0] or ("Window{" in b and PKG in b[:300])]
     res = []
-    for b in mine:
-        head = b.split("\n")[0]
-        m = re.search(r"mAttrs=(WM\.LayoutParams\{[^}]*\})", b)
-        res.append((head.strip()[:120], m.group(1) if m else ""))
+    for blk in out.split("Window #")[1:]:
+        if PKG not in blk[:300]:
+            continue
+        head = blk.split("\n")[0].strip()[:110]
+        attr = next((l.strip() for l in blk.split("\n") if "mAttrs=" in l), "")
+        res.append((head, attr))
     return res
 
 
 def overlay_windows():
-    return [w for w in windows() if "ty=APPLICATION_OVERLAY" in w[1] or "ty=2038" in w[1]]
+    return [w for w in windows() if "APPLICATION_OVERLAY" in w[1] or "ty=2038" in w[1]]
 
 
 def ui_nodes():
@@ -197,18 +197,28 @@ if tap_text("+"):
         time.sleep(0.8)
         if not find("Tambah Web Source", False):
             info("panel tertutup oleh Back; membuka lagi")
-        if tap_text("Tambah Web Source", exact=True) or tap_text("Tambah Web Source", exact=False):
+        btn = find("Tambah Web Source", True, "Button")
+        if btn:
+            sh(f"input tap {btn['cx']} {btn['cy']}")
             time.sleep(2.5)
             added = len(project_json("seed0001")["items"]) == 2
+        else:
+            info("tombol Tambah (Button) tidak ditemukan; teks: " + ", ".join(n["text"] for n in ui_nodes() if n["text"]))
 else:
     info("tombol + tidak ditemukan oleh uiautomator (overlay mungkin tidak terbaca)")
 check("Web Source baru ditambah lewat UI", added, f"jumlah elemen = {len(project_json('seed0001')['items'])}")
 
 # ---------------------------------------------------------------- 6. stream
 section("6. Mode Stream (jendela WebView di atas aplikasi lain)")
-if not tap_text("Stream"):
+sh("input keyevent 4") if find("Tambah Web Source", False) else None  # pastikan panel tertutup
+time.sleep(1)
+tapped = tap_text("Stream")
+time.sleep(4)
+left_edit = find("Hapus semua", False) is None
+check("Tab Stream di editor beralih ke mode Stream", tapped and left_edit, f"tapped={tapped}, editor hilang={left_edit}")
+if not left_edit:
     sh("am start-foreground-service -a com.aastudio.live.RUN --es project_id seed0001 -n %s/.OverlayService" % PKG)
-time.sleep(12)
+time.sleep(10)
 ow = overlay_windows()
 n_items = len(project_json("seed0001")["items"])
 check("Jendela Stream tampil (1 per elemen + bubble)", len(ow) >= n_items, f"{len(ow)} jendela overlay, {n_items} elemen")
