@@ -1,137 +1,174 @@
 package com.aastudio.live
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
-import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.concurrent.Executors
+import android.provider.Settings
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import java.text.DateFormat
+import java.util.Date
 
+/** Layar utama: logo AA, status izin overlay, dan daftar proyek. */
 class MainActivity : Activity() {
-    private lateinit var webView: WebView
-    private val executor = Executors.newSingleThreadExecutor()
-    private var pendingSaveText: String? = null
-    private var pendingSaveName: String = "project.html"
-    private val openFileRequest = 4101
-    private val saveFileRequest = 4102
+
+    private lateinit var store: ProjectStore
+    private lateinit var list: LinearLayout
+    private lateinit var permStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        webView = WebView(this)
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.allowFileAccess = true
-        webView.settings.allowContentAccess = true
-        webView.settings.loadsImagesAutomatically = true
-        webView.settings.javaScriptCanOpenWindowsAutomatically = false
-        webView.webViewClient = WebViewClient()
-        webView.webChromeClient = WebChromeClient()
-        webView.addJavascriptInterface(Bridge(), "AAAndroid")
-        setContentView(webView)
-        webView.loadUrl("file:///android_asset/index.html")
+        store = ProjectStore(this)
+
+        val scroll = ScrollView(this)
+        scroll.setBackgroundColor(Ui.WHITE)
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        val pad = Ui.dp(this, 16)
+        col.setPadding(pad, Ui.dp(this, 24), pad, pad)
+        scroll.addView(col, Ui.lp(Ui.MATCH, Ui.WRAP))
+
+        val logo = TextView(this)
+        logo.text = "AA"
+        logo.textSize = 40f
+        logo.setTextColor(Ui.BLACK)
+        logo.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        logo.gravity = Gravity.CENTER
+        logo.background = Ui.box(this, Ui.WHITE, Ui.LINE, 12, 1)
+        col.addView(logo, Ui.lp(Ui.dp(this, 84), Ui.dp(this, 84)))
+
+        col.addView(
+            Ui.text(this, "AA Studio", 24f, true),
+            Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 10), 0, 0)
+        )
+        col.addView(
+            Ui.text(this, "Editor overlay + Web Source", 13f, false, Ui.MUTED),
+            Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, 0, 0, Ui.dp(this, 14))
+        )
+
+        permStatus = Ui.text(this, "", 13f, true)
+        permStatus.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10))
+        permStatus.setOnClickListener { startActivity(Intent(this, OverlaySettingsActivity::class.java)) }
+        col.addView(permStatus, Ui.lp(Ui.MATCH, Ui.WRAP))
+
+        col.addView(
+            Ui.button(this, "+ Proyek baru", true) { showNewProjectDialog() },
+            Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 14), 0, Ui.dp(this, 10))
+        )
+        col.addView(Ui.text(this, "Proyek", 15f, true))
+
+        list = LinearLayout(this)
+        list.orientation = LinearLayout.VERTICAL
+        col.addView(list, Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 8), 0, 0))
+
+        setContentView(scroll)
     }
 
-    inner class Bridge {
-        @JavascriptInterface fun saveFile(name: String, text: String) {
-            runOnUiThread {
-                pendingSaveText = text
-                pendingSaveName = name.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "project.txt" }
-                val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TITLE, pendingSaveName)
-                }
-                startActivityForResult(intent, saveFileRequest)
-            }
-        }
-
-        @JavascriptInterface fun openFile() {
-            runOnUiThread {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "*/*"
-                }
-                startActivityForResult(intent, openFileRequest)
-            }
-        }
-
-        @JavascriptInterface fun fetchSource(address: String) {
-            executor.execute {
-                var result = ""
-                var error = ""
-                try {
-                    val uri = Uri.parse(address)
-                    if (uri.scheme != "https" && uri.scheme != "http") throw Exception("Gunakan URL http atau https")
-                    val connection = URL(address).openConnection() as HttpURLConnection
-                    connection.connectTimeout = 8000
-                    connection.readTimeout = 8000
-                    connection.setRequestProperty("User-Agent", "AAStudio/1.0")
-                    connection.instanceFollowRedirects = true
-                    connection.connect()
-                    if (connection.responseCode !in 200..299) throw Exception("HTTP ${connection.responseCode}")
-                    val stream = connection.inputStream
-                    val reader = BufferedReader(InputStreamReader(stream, Charsets.UTF_8))
-                    val builder = StringBuilder()
-                    val buffer = CharArray(4096)
-                    var total = 0
-                    while (true) {
-                        val count = reader.read(buffer)
-                        if (count <= 0 || total >= 1_000_000) break
-                        builder.append(buffer, 0, count)
-                        total += count
-                    }
-                    reader.close()
-                    connection.disconnect()
-                    result = builder.toString()
-                } catch (e: Exception) { error = e.message ?: "Gagal mengambil source" }
-                val payload = JSONObject().put("source", result).put("error", error).toString()
-                runOnUiThread { webView.evaluateJavascript("window.onSourceFetched && window.onSourceFetched(${JSONObject.quote(payload)})", null) }
-            }
-        }
-
-        @JavascriptInterface fun toast(message: String) {
-            runOnUiThread { Toast.makeText(this@MainActivity, message.take(160), Toast.LENGTH_SHORT).show() }
-        }
+    override fun onResume() {
+        super.onResume()
+        refresh()
     }
 
-    @Deprecated("Deprecated in Android API; retained for compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != Activity.RESULT_OK || data?.data == null) return
-        val uri = data.data!!
-        try {
-            when (requestCode) {
-                openFileRequest -> {
-                    val text = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: ""
-                    webView.evaluateJavascript("window.onFileOpened && window.onFileOpened(${JSONObject.quote(uri.lastPathSegment ?: "file")}, ${JSONObject.quote(text)})", null)
-                }
-                saveFileRequest -> {
-                    contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(pendingSaveText ?: "") }
-                    Toast.makeText(this, "File berhasil disimpan", Toast.LENGTH_SHORT).show()
-                }
-            }
-        } catch (e: Exception) { Toast.makeText(this, "Operasi file gagal: ${e.message}", Toast.LENGTH_LONG).show() }
-    }
-
-    override fun onBackPressed() {
-        webView.evaluateJavascript("window.handleAndroidBack && window.handleAndroidBack()") { handled ->
-            if (handled != "true") super.onBackPressed()
+    private fun refresh() {
+        val granted = Settings.canDrawOverlays(this)
+        permStatus.text = if (granted) {
+            "Izin overlay: AKTIF"
+        } else {
+            "Izin overlay: BELUM AKTIF (ketuk untuk mengatur)"
         }
+        permStatus.setTextColor(if (granted) Ui.OK else Ui.BAD)
+        permStatus.background = Ui.box(this, Ui.WHITE, if (granted) Ui.OK else Ui.BAD)
+
+        list.removeAllViews()
+        val projects = store.list()
+        if (projects.isEmpty()) {
+            list.addView(Ui.text(this, "Belum ada proyek. Buat proyek baru untuk mulai.", 13f, false, Ui.MUTED))
+            return
+        }
+        for (p in projects) list.addView(row(p), Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, 0, 0, Ui.dp(this, 8)))
     }
 
-    override fun onDestroy() {
-        webView.removeJavascriptInterface("AAAndroid")
-        webView.destroy()
-        executor.shutdownNow()
-        super.onDestroy()
+    private fun row(p: Project): LinearLayout {
+        val r = LinearLayout(this)
+        r.orientation = LinearLayout.HORIZONTAL
+        r.gravity = Gravity.CENTER_VERTICAL
+        r.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10))
+        r.background = Ui.box(this, Ui.WHITE, Ui.LINE)
+        r.setOnClickListener { open(p) }
+
+        val info = LinearLayout(this)
+        info.orientation = LinearLayout.VERTICAL
+        val name = Ui.text(this, p.name, 15f, true)
+        name.maxLines = 1
+        name.ellipsize = android.text.TextUtils.TruncateAt.END
+        info.addView(name)
+        val date = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(p.updated))
+        info.addView(Ui.text(this, "${p.items.size} elemen · $date", 12f, false, Ui.MUTED))
+        r.addView(info, Ui.lp(0, Ui.WRAP, 1f))
+
+        val size = Ui.dp(this, 40)
+        r.addView(Ui.iconBtn(this, "✎") { showRenameDialog(p) }, Ui.lpM(size, size, 0f, Ui.dp(this, 4), 0, 0, 0))
+        r.addView(Ui.iconBtn(this, "🗑") { confirmDelete(p) }, Ui.lpM(size, size, 0f, Ui.dp(this, 4), 0, 0, 0))
+        return r
+    }
+
+    private fun open(p: Project) {
+        startActivity(Intent(this, EditorActivity::class.java).putExtra(EditorActivity.EXTRA_PROJECT, p.id))
+    }
+
+    private fun showNewProjectDialog() {
+        val f = Ui.field(this, "Nama proyek", "Proyek ${store.list().size + 1}")
+        val box = FrameLayout(this)
+        val pad = Ui.dp(this, 20)
+        box.setPadding(pad, Ui.dp(this, 8), pad, 0)
+        box.addView(f)
+        AlertDialog.Builder(this)
+            .setTitle("Proyek baru")
+            .setView(box)
+            .setPositiveButton("Buat") { _, _ ->
+                val p = store.create(f.text.toString())
+                startActivity(
+                    Intent(this, EditorActivity::class.java)
+                        .putExtra(EditorActivity.EXTRA_PROJECT, p.id)
+                        .putExtra(EditorActivity.EXTRA_ADD_SOURCE, true)
+                )
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showRenameDialog(p: Project) {
+        val f = Ui.field(this, "Nama proyek", p.name)
+        val box = FrameLayout(this)
+        val pad = Ui.dp(this, 20)
+        box.setPadding(pad, Ui.dp(this, 8), pad, 0)
+        box.addView(f)
+        AlertDialog.Builder(this)
+            .setTitle("Ganti nama")
+            .setView(box)
+            .setPositiveButton("Simpan") { _, _ ->
+                val fresh = store.load(p.id) ?: return@setPositiveButton
+                fresh.name = f.text.toString().trim().ifBlank { "Proyek" }
+                store.save(fresh)
+                refresh()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun confirmDelete(p: Project) {
+        AlertDialog.Builder(this)
+            .setTitle("Hapus proyek?")
+            .setMessage("Proyek \"${p.name}\" beserta semua elemennya akan dihapus permanen.")
+            .setPositiveButton("Hapus") { _, _ ->
+                store.delete(p.id)
+                refresh()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
     }
 }

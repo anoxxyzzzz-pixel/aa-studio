@@ -16,6 +16,8 @@ jobs:
           gradle-version: 8.9
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
+      - name: Ringkasan APK
+        run: ls -l app/build/outputs/apk/debug/
       - uses: actions/upload-artifact@v4
         with:
           name: AA-Studio-debug

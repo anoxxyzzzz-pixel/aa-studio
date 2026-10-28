@@ -1,20 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tampil di atas aplikasi lain (floating overlay). Harus diaktifkan pengguna lewat Pengaturan. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Overlay berjalan sebagai foreground service agar sah dan bisa dihentikan dari notifikasi. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:label="AA Studio"
-        android:icon="@drawable/ic_aa"
-        android:roundIcon="@drawable/ic_aa"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
+
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="unspecified">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".EditorActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".OverlaySettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AudioActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize" />
+
+        <service
+            android:name=".OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>
