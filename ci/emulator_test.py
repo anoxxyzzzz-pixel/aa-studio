@@ -249,6 +249,26 @@ try:
 except Exception as e:
     info(f"analisis piksel dilewati: {e}")
 
+info("TCP 443: " + " ".join(sh("nc -z -w 5 example.com 443 && echo terhubung || echo gagal").split())[:80])
+info("tanggal emulator: " + sh("date").strip())
+info("log WebView: " + " || ".join(l[-150:] for l in run("adb logcat -d -s AAStudio:V", 20).splitlines()[-8:]))
+try:
+    it_ = project_json("seed0001")["items"][0]
+    xa, ya = int(lx(it_["x"])), int(ly(it_["y"]))
+    xb, yb = int(lx(it_["x"] + it_["w"])), int(ly(it_["y"] + it_["h"]))
+    grid = []
+    for gy in range(4):
+        row = []
+        for gx in range(4):
+            r_ = g_ = b_ = n_ = 0
+            for x in range(xa + (xb - xa) * gx // 4 + 5, xa + (xb - xa) * (gx + 1) // 4 - 5, 20):
+                for y in range(ya + (yb - ya) * gy // 4 + 5, ya + (yb - ya) * (gy + 1) // 4 - 5, 20):
+                    p_ = im.getpixel((x, y)); r_ += p_[0]; g_ += p_[1]; b_ += p_[2]; n_ += 1
+            row.append("%02x%02x%02x" % (r_ // max(1, n_), g_ // max(1, n_), b_ // max(1, n_)))
+        grid.append(" ".join(row))
+    info("grid warna kotak (4x4): " + " / ".join(grid))
+except Exception as e:
+    info(f"grid warna dilewati: {e}")
 info("teks di jendela Stream: " + " | ".join(n["text"] for n in ui_nodes() if n["text"]))
 mem = sh(f"dumpsys meminfo {PKG} | grep -E 'TOTAL PSS|TOTAL:'")
 info("memori: " + " ".join(mem.split())[:200])

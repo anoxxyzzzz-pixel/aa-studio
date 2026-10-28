@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.http.SslError
+import android.util.Log
+import android.webkit.SslErrorHandler
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -50,6 +53,7 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
         }
 
         override fun onPageFinished(view: WebView?, url: String?) {
+            Log.i("AAStudio", "page finished url=$url")
             progress.visibility = View.GONE
             view?.evaluateJavascript(AUDIO_JS, null)
             pushAudio()
@@ -57,6 +61,7 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
 
         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
             if (request?.isForMainFrame == true) {
+                Log.w("AAStudio", "load error ${error?.errorCode} ${error?.description} url=${request.url}")
                 showError(friendly(error?.description?.toString() ?: "tidak diketahui"), true)
             }
         }
@@ -67,8 +72,15 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
             errorResponse: WebResourceResponse?
         ) {
             if (request?.isForMainFrame == true) {
+                Log.w("AAStudio", "http error ${errorResponse?.statusCode} url=${request.url}")
                 showError("Situs menjawab dengan kode HTTP ${errorResponse?.statusCode ?: 0}", true)
             }
+        }
+
+        override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+            // Tetap aman: sertifikat bermasalah selalu ditolak, tidak pernah diabaikan.
+            Log.w("AAStudio", "ssl error ${error?.primaryError} url=${error?.url}")
+            handler?.cancel()
         }
 
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
