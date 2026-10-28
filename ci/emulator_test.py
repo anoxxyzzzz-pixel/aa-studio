@@ -104,12 +104,18 @@ run("adb wait-for-device")
 sh("settings put global window_animation_scale 0")
 sh("settings put global transition_animation_scale 0")
 sh("settings put global animator_duration_scale 0")
+sh("settings put global hide_error_dialogs 1")
+sh("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
+sh("input keyevent 3")
 sh("input keyevent 82")
+time.sleep(25)  # beri waktu emulator (software rendering) menjadi stabil
 size = re.search(r"(\d+)x(\d+)", sh("wm size").split("\n")[-2] if "Override" in sh("wm size") else sh("wm size"))
 W, H = int(size.group(1)), int(size.group(2))
 dens = int(re.search(r"(\d+)", sh("wm density")).group(1))
 dp = dens / 160.0
 info(f"layar {W}x{H}, densitas {dens}")
+info("jaringan: " + " ".join(sh("ping -c 1 -W 3 8.8.8.8 | tail -2").split())[:160])
+info("DNS: " + " ".join(sh("ping -c 1 -W 3 example.com | head -2").split())[:160])
 run("adb logcat -c")
 
 out = run("adb install -r app/build/outputs/apk/debug/app-debug.apk", 180)
@@ -243,6 +249,7 @@ try:
 except Exception as e:
     info(f"analisis piksel dilewati: {e}")
 
+info("teks di jendela Stream: " + " | ".join(n["text"] for n in ui_nodes() if n["text"]))
 mem = sh(f"dumpsys meminfo {PKG} | grep -E 'TOTAL PSS|TOTAL:'")
 info("memori: " + " ".join(mem.split())[:200])
 
