@@ -175,8 +175,11 @@ class OverlayService : Service(), EditLayer.Host {
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
     private fun newParams(w: Int, h: Int, flags: Int): WindowManager.LayoutParams {
+        // FLAG_HARDWARE_ACCELERATED wajib: jendela dari WindowManager tidak otomatis ber-akselerasi
+        // hardware, dan WebView tidak tergambar (kosong) tanpa itu.
         val p = WindowManager.LayoutParams(
-            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, flags, PixelFormat.TRANSLUCENT
+            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            flags or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, PixelFormat.TRANSLUCENT
         )
         p.gravity = Gravity.TOP or Gravity.START
         if (Build.VERSION.SDK_INT >= 28) {
