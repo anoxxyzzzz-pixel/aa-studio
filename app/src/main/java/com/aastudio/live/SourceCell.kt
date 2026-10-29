@@ -48,6 +48,11 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
     private val client = object : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             hideError()
+            // Halaman dengan media yang terus memuat (audio loop/stream) bisa tidak pernah memanggil
+            // onPageFinished; pengaman waktu memastikan pengatur suara tetap terpasang.
+            removeCallbacks(safetyInject)
+            postDelayed(safetyInject, 2000)
+            postDelayed(safetyInject, 6000)
             progress.progress = 0
             progress.visibility = View.VISIBLE
         }
@@ -55,8 +60,7 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
         override fun onPageFinished(view: WebView?, url: String?) {
             Log.i("AAStudio", "page finished url=$url")
             progress.visibility = View.GONE
-            view?.evaluateJavascript(AUDIO_JS, null)
-            pushAudio()
+            injectAudio()
         }
 
         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -102,6 +106,21 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
 
         override fun onProgressChanged(view: WebView?, newProgress: Int) {
             progress.progress = newProgress
+            if (newProgress >= 100) progress.visibility = View.GONE
+            if (newProgress >= 70) injectAudio()
+        }
+    }
+
+    private fun injectAudio() {
+        if (released) return
+        web.evaluateJavascript(AUDIO_JS, null)
+        pushAudio()
+    }
+
+    private val safetyInject = Runnable {
+        if (!released) {
+            progress.visibility = View.GONE
+            injectAudio()
         }
     }
 
@@ -231,6 +250,7 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
     fun release() {
         if (released) return
         released = true
+        removeCallbacks(safetyInject)
         web.stopLoading()
         web.webViewClient = WebViewClient()
         web.webChromeClient = null

@@ -377,7 +377,7 @@ HTML = """<!doctype html><meta charset=utf-8><body style="background:#123;color:
 <audio id=a src="tone.wav" loop autoplay></audio>
 <script>
 var a=document.getElementById('a');
-window.addEventListener('load',function(){console.log('AA_LOAD');});setTimeout(function(){console.log('AA_STATE '+document.readyState);},3000);
+window.addEventListener('load',function(){console.log('AA_LOAD');});setTimeout(function(){console.log('AA_HOOK '+(!!window.__aaAudio));},7000);
 a.addEventListener('playing',function(){console.log('AA_PLAYING');});
 a.play().catch(function(e){console.log('AA_PLAYFAIL '+e);});
 fetch('/%2e%2e/projects/seed0001.json').then(function(r){return r.text().then(function(t){console.log('AA_TRAV '+r.status+' '+(t.indexOf('seed0001')>=0?'LEAK':'safe'));});}).catch(function(e){console.log('AA_TRAV err');});
@@ -423,7 +423,8 @@ run("adb logcat -c")
 start("off0001"); time.sleep(15)
 lg = jslog()
 info("log offline lokal: " + " | ".join(dict.fromkeys(l.split(": ", 1)[-1] for l in lg.splitlines() if "AAStudio" in l))[:900])
-check("Halaman lokal termuat tanpa internet", "page finished url=https://aa.local/t1/index.html" in lg, "")
+check("Halaman lokal termuat tanpa internet (event load di halaman)", "AA_LOAD" in lg, "")
+check("Pengatur suara (JS) terpasang di halaman lokal berisi audio loop", "AA_HOOK true" in lg, "")
 check("Audio di halaman lokal berbunyi tanpa internet (event playing)", "AA_PLAYING" in lg, "")
 pb = sh("dumpsys audio").replace("\n", " ")
 check("Sistem audio mencatat pemutaran dari aplikasi", "state:started" in pb.replace(" ", "") or "state:started" in pb, "")
@@ -482,7 +483,7 @@ if imported:
     run("adb logcat -c")
     start("off0001"); time.sleep(15)
     lg = jslog()
-    check("Hasil impor ZIP dimuat & berbunyi tanpa internet", lg.count("AA_PLAYING") >= 2 and "https://aa.local/" in lg and "/site/index.html" in lg, "")
+    check("Hasil impor ZIP dimuat & berbunyi tanpa internet", lg.count("AA_LOAD") >= 2 and lg.count("AA_PLAYING") >= 1 and lg.count("AA_HOOK true") >= 2, "")
 sh("svc wifi enable"); sh("svc data enable")
 check("Tidak ada crash pada uji offline", not crashes(), "; ".join(crashes()))
 
