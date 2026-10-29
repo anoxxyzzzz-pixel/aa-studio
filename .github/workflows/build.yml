@@ -28,7 +28,7 @@ jobs:
           name: AA-Studio-apk
           path: AA-Studio.apk
       - name: Publikasikan sebagai GitHub Release (link unduh langsung)
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
