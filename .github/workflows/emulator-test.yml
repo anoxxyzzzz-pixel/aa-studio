@@ -12,7 +12,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Build APK rilis
-        run: chmod +x gradlew && ./gradlew :app:assembleRelease --stacktrace
+        run: chmod +x gradlew && ./gradlew :app:assembleRelease -Pabis=arm64-v8a,armeabi-v7a,x86_64 --stacktrace
       - name: Pasang Pillow (analisis piksel)
         run: pip install pillow --break-system-packages || pip install pillow
       - name: Enable KVM

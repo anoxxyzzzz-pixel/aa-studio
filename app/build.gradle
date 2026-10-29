@@ -26,7 +26,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
+        ndk { abiFilters.addAll(((project.findProperty('abis') ?: 'arm64-v8a,armeabi-v7a') as String).split(',')) }
 
         aaptOptions {
             ignoreAssetsPattern ''
