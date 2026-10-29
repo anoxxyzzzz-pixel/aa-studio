@@ -35,5 +35,5 @@ jobs:
           gh release delete latest --cleanup-tag -y || true
           gh release create latest AA-Studio.apk \
             --title "AA Studio (terbaru)" \
-            --notes "APK terbaru dari commit ${GITHUB_SHA::7}. Unduh AA-Studio.apk lalu pasang (izinkan sumber tidak dikenal)." \
+            --notes "v2.1 (commit ${GITHUB_SHA::7}). Baru: Web Source offline (impor .html/.zip, jalan tanpa internet, suara tetap ada). Unduh AA-Studio.apk lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi yang ditandatangani kunci sendiri, bukan dari Play Store; pilih Install anyway hanya jika Anda percaya sumbernya." \
             --latest
