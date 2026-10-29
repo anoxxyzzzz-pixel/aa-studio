@@ -284,8 +284,8 @@ class OverlayService : Service(), EditLayer.Host {
 
     private fun addBubble(size: Point) {
         val root = LinearLayout(this)
-        root.orientation = LinearLayout.HORIZONTAL
-        root.gravity = Gravity.CENTER_VERTICAL
+        root.orientation = LinearLayout.VERTICAL
+        root.gravity = Gravity.START
 
         val dot = TextView(this)
         dot.text = "AA"
@@ -300,10 +300,11 @@ class OverlayService : Service(), EditLayer.Host {
         dot.background = g
         root.addView(dot, LinearLayout.LayoutParams(dp(46), dp(46)))
 
+        // Menu menumpuk ke bawah (bukan menyamping) agar tidak melebar keluar layar.
         val menu = LinearLayout(this)
-        menu.orientation = LinearLayout.HORIZONTAL
+        menu.orientation = LinearLayout.VERTICAL
         menu.visibility = View.GONE
-        val itemLp = { LinearLayout.LayoutParams(Ui.WRAP, dp(36)).also { it.leftMargin = dp(6) } }
+        val itemLp = { LinearLayout.LayoutParams(Ui.MATCH, dp(36)).also { it.topMargin = dp(6) } }
         menu.addView(menuItem("Editor") { showMode(Mode.EDIT) }, itemLp())
         val mt = menuItem(if (muted) "Mute" else "Suara") { toggleMute() }
         muteLabel = mt
@@ -345,8 +346,10 @@ class OverlayService : Service(), EditLayer.Host {
                     if (moved || abs(dx) > dp(6) || abs(dy) > dp(6)) {
                         moved = true
                         val s = screenSize()
-                        lp.x = (startX + dx).toInt().coerceIn(0, (s.x - dp(46)).coerceAtLeast(0))
-                        lp.y = (startY + dy).toInt().coerceIn(0, (s.y - dp(46)).coerceAtLeast(0))
+                        val bw = if (root.width > 0) root.width else dp(46)
+                        val bh = if (root.height > 0) root.height else dp(46)
+                        lp.x = (startX + dx).toInt().coerceIn(0, (s.x - bw).coerceAtLeast(0))
+                        lp.y = (startY + dy).toInt().coerceIn(0, (s.y - bh).coerceAtLeast(0))
                         try {
                             wm.updateViewLayout(root, lp)
                         } catch (e: IllegalArgumentException) {
@@ -357,7 +360,11 @@ class OverlayService : Service(), EditLayer.Host {
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
                         menu.visibility = if (menu.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        // menu ke kiri bila bubble dekat tepi kanan
+                        // Geser bubble bila menu yang terbuka akan keluar dari layar.
+                        root.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+                        val s = screenSize()
+                        lp.x = lp.x.coerceIn(0, (s.x - root.measuredWidth).coerceAtLeast(0))
+                        lp.y = lp.y.coerceIn(0, (s.y - root.measuredHeight).coerceAtLeast(0))
                         try {
                             wm.updateViewLayout(root, lp)
                         } catch (e: IllegalArgumentException) {

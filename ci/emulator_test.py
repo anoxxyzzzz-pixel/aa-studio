@@ -253,6 +253,19 @@ for h, a in ow:
     info(("NOT_TOUCHABLE " if "NOT_TOUCHABLE" in a or "fl=" in a and "0x" in a else "") + a[:230])
 shot = run("adb exec-out screencap -p > /tmp/s.png; ls -l /tmp/s.png")
 snap("stream")
+bub = find("AA", True)
+if bub:
+    sh(f"input tap {bub['cx']} {bub['cy']}")
+    time.sleep(1.5)
+    snap("bubble")
+    labels = [n["text"] for n in ui_nodes() if n["text"] in ("Editor", "Suara", "Mute", "Sentuh:OFF", "Sentuh:ON", "Vol+", "Stop")]
+    info("menu bubble: " + ", ".join(labels))
+    right = [n["b"][2] for n in ui_nodes() if n["text"] in ("Editor", "Suara", "Mute", "Sentuh:OFF", "Sentuh:ON", "Vol+", "Stop")]
+    check("Semua tombol menu bubble muat di dalam layar", len(labels) >= 5 and (not right or max(right) <= W), f"{len(labels)} tombol, tepi kanan terjauh={max(right) if right else '-'} dari {W}")
+    sh(f"input tap {bub['cx']} {bub['cy']}")
+    time.sleep(1)
+else:
+    info("bubble AA tidak ditemukan oleh uiautomator")
 try:
     import importlib
     try:
