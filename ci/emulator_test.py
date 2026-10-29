@@ -118,7 +118,8 @@ info("jaringan: " + " ".join(sh("ping -c 1 -W 3 8.8.8.8 | tail -2").split())[:16
 info("DNS: " + " ".join(sh("ping -c 1 -W 3 example.com | head -2").split())[:160])
 run("adb logcat -c")
 
-out = run("adb install -r app/build/outputs/apk/debug/app-debug.apk", 180)
+info("ukuran APK rilis: " + run("ls -l app/build/outputs/apk/release/app-release.apk").split()[4] + " byte")
+out = run("adb install -r app/build/outputs/apk/release/app-release.apk", 180)
 check("APK terpasang", "Success" in out, out.strip()[-80:])
 sh(f"appops set {PKG} SYSTEM_ALERT_WINDOW allow")
 sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
@@ -179,6 +180,7 @@ check("Overlay editor aktif untuk proyek seed", len(overlay_windows()) >= 1, "")
 
 time.sleep(2)
 snap("edit")
+info("memori mode Editor: " + " ".join(sh(f"dumpsys meminfo {PKG} | grep -E 'TOTAL PSS'").split())[:120])
 lx = lambda L: L * W / 1920.0
 ly = lambda L: L * H / 1080.0
 
@@ -295,7 +297,8 @@ except Exception as e:
     info(f"grid warna dilewati: {e}")
 info("teks di jendela Stream: " + " | ".join(n["text"] for n in ui_nodes() if n["text"]))
 mem = sh(f"dumpsys meminfo {PKG} | grep -E 'TOTAL PSS|TOTAL:'")
-info("memori: " + " ".join(mem.split())[:200])
+info("memori mode Stream: " + " ".join(mem.split())[:200])
+info("CPU: " + " ".join(sh("dumpsys cpuinfo | grep aastudio").split())[:200])
 
 # ---------------------------------------------------------------- 7. rotasi
 section("7. Rotasi layar")
@@ -330,6 +333,21 @@ if tap_text("Play"):
 else:
     info("tombol Play tidak ditemukan")
 check("Suara uji diputar (AudioPlaybackConfiguration started)", played, "")
+fx = sh("dumpsys media.audio_flinger | grep -i -c loudness").strip()
+check("Efek penguat (LoudnessEnhancer) terpasang pada pemutar", fx.isdigit() and int(fx) > 0, f"cocok={fx}")
+def music_idx():
+    blk = sh("dumpsys audio").split("- STREAM_MUSIC:")
+    if len(blk) < 2:
+        return -1
+    m = re.search(r"speaker\): (\d+)", blk[1][:900])
+    return int(m.group(1)) if m else -1
+before = music_idx()
+btn = find("Maksimalkan volume media", True, "Button")
+if btn:
+    sh(f"input tap {btn['cx']} {btn['cy']}")
+    time.sleep(1.5)
+after = music_idx()
+check("Tombol 'Maksimalkan volume media' menaikkan volume sistem", bool(btn) and after > before or after >= 10, f"sebelum={before}, sesudah={after}")
 check("Tidak ada crash selama pengujian", not crashes(), "; ".join(crashes()))
 
 # ---------------------------------------------------------------- ringkasan

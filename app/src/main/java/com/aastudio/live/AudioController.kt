@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -23,6 +24,14 @@ class AudioController(context: Context) {
     private var focusRequest: AudioFocusRequest? = null
     private var paused = false
     private var pausedByFocus = false
+    private var enhancer: LoudnessEnhancer? = null
+
+    /** Penguat 0-15 dB di atas volume maksimum pemutar. */
+    var boostDb: Int = 6
+        set(value) {
+            field = value.coerceIn(0, 15)
+            applyBoost()
+        }
 
     var volume: Int = 100
         set(value) {
@@ -68,6 +77,34 @@ class AudioController(context: Context) {
         }
     }
 
+    private fun applyBoost() {
+        try {
+            enhancer?.setTargetGain(boostDb * 100)
+            enhancer?.enabled = boostDb > 0
+        } catch (e: RuntimeException) {
+            // efek audio tidak didukung perangkat; abaikan
+        }
+    }
+
+    private fun attachBoost(mp: MediaPlayer) {
+        releaseBoost()
+        try {
+            enhancer = LoudnessEnhancer(mp.audioSessionId)
+            applyBoost()
+        } catch (e: RuntimeException) {
+            enhancer = null
+        }
+    }
+
+    private fun releaseBoost() {
+        try {
+            enhancer?.release()
+        } catch (e: RuntimeException) {
+            // abaikan
+        }
+        enhancer = null
+    }
+
     private fun requestFocus(): Boolean {
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -104,6 +141,7 @@ class AudioController(context: Context) {
             mp.setOnPreparedListener {
                 if (player === it) {
                     applyVolume()
+                    attachBoost(it)
                     it.start()
                     paused = false
                     onState?.invoke("Memutar")
@@ -182,6 +220,7 @@ class AudioController(context: Context) {
                 // abaikan
             }
         }
+        releaseBoost()
         abandonFocus()
     }
 
@@ -192,19 +231,22 @@ class AudioController(context: Context) {
     }
 }
 
-/** Membuat suara uji bawaan (nada dua not) sebagai file WAV. Dibuat dari kode, bebas hak cipta. */
+/** Membuat suara uji bawaan (dua nada, keras dan jelas) sebagai file WAV. Dibuat dari kode, bebas hak cipta. */
 object ToneWav {
     fun write(file: File) {
         val rate = 22050
-        val n = (rate * 0.9).toInt()
+        val n = (rate * 1.6).toInt()
         val data = ByteArray(n * 2)
         for (i in 0 until n) {
             val t = i / rate.toDouble()
-            val first = t < 0.4
+            val first = t < 0.7
             val freq = if (first) 659.25 else 880.0
-            val local = if (first) t else t - 0.4
-            val env = exp(-4.0 * local) * min(1.0, local * 200.0)
-            val v = (sin(2.0 * PI * freq * t) * env * 0.6 * Short.MAX_VALUE).toInt()
+            val local = if (first) t else t - 0.7
+            // Atak cepat, peluruhan lembut: energi rata-rata jauh lebih besar dari versi lama.
+            val env = exp(-1.6 * local) * min(1.0, local * 300.0)
+            val wave = sin(2.0 * PI * freq * t) * 0.8 + sin(2.0 * PI * freq * 2 * t) * 0.2
+            // Soft clip agar puncak penuh (hampir 0 dBFS) tanpa distorsi kasar.
+            val v = (Math.tanh(wave * env * 1.6) * 0.97 * Short.MAX_VALUE).toInt()
             data[2 * i] = (v and 0xFF).toByte()
             data[2 * i + 1] = ((v shr 8) and 0xFF).toByte()
         }

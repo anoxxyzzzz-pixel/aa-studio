@@ -175,7 +175,8 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
         val muted = masterAudio.muted || item.muted || forceMute
         val vol = (masterAudio.volume / 100f) * (item.volume / 100f)
         val v = String.format(Locale.US, "%.2f", vol)
-        web.evaluateJavascript("window.__aaApply&&window.__aaApply($muted,$v)", null)
+        val g = masterAudio.webGain.coerceIn(1, 4)
+        web.evaluateJavascript("window.__aaApply&&window.__aaApply($muted,$v,$g)", null)
     }
 
     fun pauseWeb() {
@@ -221,16 +222,28 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
 
     companion object {
         /**
-         * Mengatur mute/volume semua elemen <audio>/<video> di halaman. Ini upaya terbaik:
-         * audio yang dibuat lewat Web Audio API tidak terjangkau oleh skrip ini.
+         * Mengatur mute/volume/penguat semua elemen <audio>/<video>, termasuk objek Audio() yang
+         * tidak ada di DOM (lewat pembungkus play()). Penguat >1 memakai Web Audio GainNode.
+         * Upaya terbaik: audio dari Web Audio API milik situs tidak terjangkau.
          */
         private const val AUDIO_JS =
             "(function(){if(window.__aaAudio){return;}" +
-                "window.__aaAudio={m:false,v:1,e:false};" +
-                "window.__aaApply=function(m,v){var a=window.__aaAudio;a.m=m;a.v=v;a.e=(m||v<1);" +
-                "var els=document.querySelectorAll('audio,video');" +
-                "for(var i=0;i<els.length;i++){els[i].muted=m;els[i].volume=v;}};" +
-                "setInterval(function(){var a=window.__aaAudio;if(a.e){window.__aaApply(a.m,a.v);}},1000);" +
+                "var A=window.__aaAudio={m:false,v:1,g:1,list:[],ctx:null,gn:null,t:null};" +
+                "function hook(el){if(el.__aaHooked)return;try{" +
+                "if(!A.ctx){var C=window.AudioContext||window.webkitAudioContext;A.ctx=new C();" +
+                "A.gn=A.ctx.createGain();A.gn.connect(A.ctx.destination);}" +
+                "A.ctx.createMediaElementSource(el).connect(A.gn);el.__aaHooked=true;}catch(e){}}" +
+                "function one(el){try{el.muted=A.m;el.volume=Math.min(1,A.v);if(A.g>1)hook(el);}catch(e){}}" +
+                "function all(){var els=document.querySelectorAll('audio,video');" +
+                "for(var i=0;i<els.length;i++)one(els[i]);" +
+                "for(var j=0;j<A.list.length;j++)one(A.list[j]);" +
+                "if(A.gn){A.gn.gain.value=A.g;if(A.ctx.state==='suspended'){A.ctx.resume();}}}" +
+                "var op=HTMLMediaElement.prototype.play;" +
+                "HTMLMediaElement.prototype.play=function(){if(A.list.indexOf(this)<0&&A.list.length<50)A.list.push(this);" +
+                "one(this);if(A.gn&&A.ctx.state==='suspended'){A.ctx.resume();}return op.apply(this,arguments);};" +
+                "window.__aaApply=function(m,v,g){A.m=m;A.v=v;A.g=g;all();" +
+                "var need=(m||v<1||g>1);if(need&&!A.t){A.t=setInterval(all,1500);}" +
+                "if(!need&&A.t){clearInterval(A.t);A.t=null;}};" +
                 "})();"
     }
 }

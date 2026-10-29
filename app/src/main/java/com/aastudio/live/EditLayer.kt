@@ -318,6 +318,10 @@ class EditLayer(
                     if (mode == 1) {
                         item.x = (sx + dxl).coerceIn(-item.w + 80, CANVAS_W - 80)
                         item.y = (sy + dyl).coerceIn(-item.h + 80, CANVAS_H - 80)
+                        // Geser lewat translasi (tanpa layout ulang tiap frame); margin diperbarui saat jari lepas.
+                        translationX = (pxX(item.x) - pxX(sx)).toFloat()
+                        translationY = (pxY(item.y) - pxY(sy)).toFloat()
+                        return true
                     } else {
                         var l = sx
                         var t = sy
@@ -337,6 +341,11 @@ class EditLayer(
                     return true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (mode == 1 && moved) {
+                        translationX = 0f
+                        translationY = 0f
+                        place()
+                    }
                     if (moved) host.onChanged()
                     mode = 0
                     return true

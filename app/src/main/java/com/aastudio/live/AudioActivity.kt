@@ -1,7 +1,9 @@
 package com.aastudio.live
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -49,6 +51,7 @@ class AudioActivity : Activity() {
         audio = AudioController(this)
         audio.volume = project.audio.volume
         audio.muted = project.audio.muted
+        audio.boostDb = project.audio.boost
         audio.onState = { runOnUiThread { setStatus(it, false) } }
         audio.onError = { runOnUiThread { setStatus(it, true) } }
         buildUi()
@@ -124,6 +127,96 @@ class AudioActivity : Activity() {
             }
         })
         col.addView(seek, Ui.lp(Ui.MATCH, Ui.WRAP))
+
+        // --- Volume media perangkat (penyebab paling umum suara terasa kecil)
+        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val sysLabel = Ui.text(this, "", 13f)
+        fun refreshSys() {
+            val cur = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            sysLabel.text = "Volume media perangkat: $cur / $maxVol"
+        }
+        refreshSys()
+        col.addView(sysLabel, Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 14), 0, 0))
+        val sysSeek = SeekBar(this)
+        sysSeek.max = maxVol
+        sysSeek.progress = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        sysSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0)
+                    refreshSys()
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
+        col.addView(sysSeek, Ui.lp(Ui.MATCH, Ui.WRAP))
+        col.addView(
+            Ui.button(this, "Maksimalkan volume media") {
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, maxVol, 0)
+                sysSeek.progress = maxVol
+                refreshSys()
+            },
+            Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 6), 0, 0)
+        )
+
+        // --- Boost suara uji lokal
+        val boostLabel = Ui.text(this, "Boost suara uji: +${project.audio.boost} dB", 13f)
+        col.addView(boostLabel, Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 14), 0, 0))
+        val boostSeek = SeekBar(this)
+        boostSeek.max = 15
+        boostSeek.progress = project.audio.boost
+        boostSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                boostLabel.text = "Boost suara uji: +$progress dB"
+                if (fromUser) {
+                    project.audio.boost = progress
+                    audio.boostDb = progress
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                store.save(project)
+            }
+        })
+        col.addView(boostSeek, Ui.lp(Ui.MATCH, Ui.WRAP))
+
+        // --- Penguat suara Web Source
+        val gainLabel = Ui.text(this, "", 13f)
+        fun refreshGain() {
+            val g = project.audio.webGain
+            gainLabel.text = if (g <= 1) "Penguat suara Web Source: mati (x1)" else "Penguat suara Web Source: x$g"
+        }
+        refreshGain()
+        col.addView(gainLabel, Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 14), 0, 0))
+        val gainSeek = SeekBar(this)
+        gainSeek.max = 3
+        gainSeek.progress = project.audio.webGain - 1
+        gainSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    project.audio.webGain = progress + 1
+                    refreshGain()
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                store.save(project)
+            }
+        })
+        col.addView(gainSeek, Ui.lp(Ui.MATCH, Ui.WRAP))
+        col.addView(
+            Ui.text(
+                this,
+                "Penguat Web Source memperkeras elemen audio/video di halaman. Berlaku saat halaman dimuat " +
+                    "ulang. Bila suara halaman malah hilang, kembalikan ke x1 (sebagian situs melarang penguatan).",
+                11f, false, Ui.MUTED
+            )
+        )
 
         val mute = Switch(this)
         mute.text = "Mute (suara uji dan Web Source)"
@@ -219,6 +312,7 @@ class AudioActivity : Activity() {
     private fun play() {
         audio.volume = project.audio.volume
         audio.muted = project.audio.muted
+        audio.boostDb = project.audio.boost
         if (radioFile.isChecked) {
             if (project.audio.soundUri.isBlank()) {
                 setStatus("Belum ada file. Tekan Impor dulu.", true)
@@ -226,7 +320,7 @@ class AudioActivity : Activity() {
             }
             audio.play(Uri.parse(project.audio.soundUri))
         } else {
-            val f = File(cacheDir, "aa_test_tone.wav")
+            val f = File(cacheDir, "aa_test_tone_v2.wav")
             try {
                 if (!f.exists()) ToneWav.write(f)
             } catch (e: Exception) {

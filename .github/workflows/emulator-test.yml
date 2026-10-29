@@ -14,8 +14,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Build APK rilis
+        run: gradle assembleRelease --stacktrace
       - name: Pasang Pillow (analisis piksel)
         run: pip install pillow --break-system-packages || pip install pillow
       - name: Enable KVM

@@ -175,11 +175,9 @@ class OverlayService : Service(), EditLayer.Host {
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
     private fun newParams(w: Int, h: Int, flags: Int): WindowManager.LayoutParams {
-        // FLAG_HARDWARE_ACCELERATED wajib: jendela dari WindowManager tidak otomatis ber-akselerasi
-        // hardware, dan WebView tidak tergambar (kosong) tanpa itu.
+        // Akselerasi hardware hanya untuk jendela WebView (hemat memori GPU pada editor & bubble).
         val p = WindowManager.LayoutParams(
-            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            flags or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, PixelFormat.TRANSLUCENT
+            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, flags, PixelFormat.TRANSLUCENT
         )
         p.gravity = Gravity.TOP or Gravity.START
         if (Build.VERSION.SDK_INT >= 28) {
@@ -209,6 +207,7 @@ class OverlayService : Service(), EditLayer.Host {
                 val w = (item.w * sx).toInt().coerceAtLeast(Ui.dp(this, 20))
                 val h = (item.h * sy).toInt().coerceAtLeast(Ui.dp(this, 20))
                 var flags = baseFlags() or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 if (!touchEnabled) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
@@ -312,6 +311,7 @@ class OverlayService : Service(), EditLayer.Host {
         val tt = menuItem(if (touchEnabled) "Sentuh:ON" else "Sentuh:OFF") { toggleTouch() }
         touchLabel = tt
         menu.addView(tt, itemLp())
+        menu.addView(menuItem("Vol+") { volumeUp() }, itemLp())
         menu.addView(menuItem("Stop") { stopSelf() }, itemLp())
         bubbleMenu = menu
         root.addView(menu, LinearLayout.LayoutParams(Ui.WRAP, Ui.WRAP))
@@ -369,6 +369,16 @@ class OverlayService : Service(), EditLayer.Host {
             true
         }
         wm.addView(root, lp)
+    }
+
+    /** Menaikkan volume media perangkat (penyebab utama suara terasa kecil) dan menampilkan panel volume. */
+    private fun volumeUp() {
+        val am = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        am.adjustStreamVolume(
+            android.media.AudioManager.STREAM_MUSIC,
+            android.media.AudioManager.ADJUST_RAISE,
+            android.media.AudioManager.FLAG_SHOW_UI
+        )
     }
 
     private fun toggleMute() {

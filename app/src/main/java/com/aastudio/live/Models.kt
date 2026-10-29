@@ -58,7 +58,11 @@ data class AudioSettings(
     var muted: Boolean = false,
     var autoplay: Boolean = true,
     var soundUri: String = "",
-    var soundName: String = ""
+    var soundName: String = "",
+    /** Penguat suara uji lokal dalam dB (0-15), memakai LoudnessEnhancer. */
+    var boost: Int = 6,
+    /** Pengali suara Web Source (1-4) lewat Web Audio GainNode. 1 = mati. */
+    var webGain: Int = 1
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("volume", volume)
@@ -66,6 +70,8 @@ data class AudioSettings(
         .put("autoplay", autoplay)
         .put("soundUri", soundUri)
         .put("soundName", soundName)
+        .put("boost", boost)
+        .put("webGain", webGain)
 
     companion object {
         fun fromJson(o: JSONObject?): AudioSettings {
@@ -75,7 +81,9 @@ data class AudioSettings(
                 muted = o.optBoolean("muted", false),
                 autoplay = o.optBoolean("autoplay", true),
                 soundUri = o.optString("soundUri", ""),
-                soundName = o.optString("soundName", "")
+                soundName = o.optString("soundName", ""),
+                boost = o.optInt("boost", 6).coerceIn(0, 15),
+                webGain = o.optInt("webGain", 1).coerceIn(1, 4)
             )
         }
     }
