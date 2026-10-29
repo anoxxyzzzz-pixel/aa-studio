@@ -1,0 +1,3 @@
+AA Mouse Pro is a modified version of XtMapper (https://github.com/Xtr126/XtMapper),
+Copyright (C) 2022 Xtr126 and contributors, licensed under GPL-3.0.
+Modifications: rebranding (name, icon, application id), ABI filtering, CI build/release.

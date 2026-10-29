@@ -1,16 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:colorAccent">#111111</item>
-        <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
-    </style>
-
-    <!-- Tema transparan: ikon ditekan langsung membuka overlay tanpa kilatan layar putih. -->
-    <style name="AppTheme.Launch" parent="AppTheme">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowNoTitle">true</item>
-    </style>
+    <style name="MaterialAlertDialog.Centered" parent="ThemeOverlay.Material3.MaterialAlertDialog.Centered" />
 </resources>

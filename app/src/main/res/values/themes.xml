@@ -1,0 +1,16 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.XtMapper" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <item name="android:statusBarColor">?android:colorBackground</item>
+    </style>
+
+    <style name="Theme.XtMapper.MainActivity" parent="Theme.XtMapper">
+        <item name="android:colorBackground">@color/black</item>
+    </style>
+
+    <style name="Theme.XtMapper.EditorUI" parent="Theme.MaterialComponents">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>

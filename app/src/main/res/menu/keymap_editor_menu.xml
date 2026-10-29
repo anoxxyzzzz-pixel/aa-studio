@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/dpad"
+        android:icon="@drawable/dpad"
+        android:title="@string/d_pad" />
+    <item
+        android:id="@+id/crosshair"
+        android:icon="@drawable/crosshair"
+        android:title="@string/crosshair" />
+    <item
+        android:id="@+id/mouse_left"
+        android:icon="@drawable/ic_baseline_mouse_36"
+        android:title="@string/left_click" />
+    <item
+        android:id="@+id/mouse_right"
+        android:icon="@drawable/ic_baseline_mouse_36"
+        android:title="@string/right_click" />
+    <item
+        android:id="@+id/swipe_key"
+        android:icon="@drawable/ic_baseline_touch_app_24"
+        android:title="@string/swipe_key" />
+    <item
+        android:id="@+id/shift_key"
+        android:icon="@drawable/ic_baseline_swap_horiz_24"
+        android:title="@string/shift_key" />
+    <item
+        android:id="@+id/add"
+        android:icon="@drawable/newkey"
+        android:title="@string/add_key" />
+
+    <item
+        android:id="@+id/save"
+        android:icon="@drawable/ic_baseline_done_36"
+        android:title="@string/save" />
+
+    <item
+        android:id="@+id/macro"
+        android:icon="@drawable/ic_baseline_mouse_36"
+        android:title="@string/macro" />
+
+    <item
+        android:id="@+id/camera"
+        android:icon="@drawable/baseline_360_24"
+        android:title="@string/camera" />
+    <item
+        android:id="@+id/mouse_walk"
+        android:icon="@drawable/ic_baseline_mouse_36"
+        android:title="@string/mouse_walk" />
+    <item
+        android:id="@+id/reset"
+        android:icon="@android:drawable/ic_menu_revert"
+        android:title="@string/reset" />
+
+    <item
+        android:id="@+id/import_export"
+        android:icon="@android:drawable/ic_menu_share"
+        android:title="@string/share" />
+</menu>

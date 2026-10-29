@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="start">开始</string>
+    <string name="stop">停止</string>
+    <string name="configure">设置</string>
+    <string name="edit_keymap">编辑键映射</string>
+    <string name="help">帮助</string>
+    <string name="package_name">包名：</string>
+    <string name="mouse_sensitivity">鼠标灵敏度</string>
+    <string name="mouse_aim_activated">    射击模式点击右键或~键退出
+    </string>
+    <string name="scroll_speed">滚动速度</string>
+    <string name="keyboard_shortcuts">键盘快捷键：</string>
+    <string name="dialog_alert_editor">    服务未运行。
+    \n您可能无法映射所有按键事件。
+    \n运行激活并重试。</string>
+    <string name="dialog_alert_editor_title">未激活</string>
+    <string name="dialog_alert_add_profile">输入新的配置名称：</string>
+    <string name="dialog_alert_select_profile">选择配置文件 \ </string>
+    <string name="dialog_alert_enable_profile">为此应用启用映射吗？</string>
+    <string name="key">键</string>
+    <string name="switch_profile">切换配置文件</string>
+    <string name="launch_editor">启动编辑器</string>
+    <string name="pause_resume">暂停/恢复</string>
+    <!-- bottom navigation in settings fragment -->
+    <string name="tuning">微调</string>
+    <string name="config">配置</string>
+    <string name="shortcuts">快捷</string>
+    <string name="trigger_mouse_aim_with">触发鼠标瞄准：</string>
+    <string name="right_click">右键单击</string>
+    <string name="key_grave">~键</string>
+    <string name="pinch_to_zoom_gesture_info">使用以下命令执行二指手势：</string>
+    <string name="drag_mouse">Ctrl+拖动鼠标</string>
+    <string name="mouse_wheel">Ctrl+鼠标滚轮</string>
+    <string name="mouse_aim">鼠标瞄准</string>
+    <string name="cancel">@android:string/cancel</string>
+    <string name="ok">@android:string/ok</string>
+    <string name="yes">@android:string/yes</string>
+    <string name="no">@android:string/no</string>
+    <string name="swipe_delay_ms">滑动延迟 %d 毫秒</string>
+    <string name="shift_transition_ms">切换过渡: %d 毫秒</string>
+    <string name="shift_transition_title">切换过渡速度</string>
+    <string name="use_global_default">全局默认 (%d 毫秒)</string>
+    <string name="profile_name">配置名称</string>
+    <string name="root_not_found_title">未获取root权限</string>
+    <string name="root_not_found_message">键映射需要获取root权限才能运行。\n请在您的root管理器中为AA Mouse Pro授予权限</string>
+    <string name="root_no_privileges_title">无法以root权限启动服务</string>
+    <string name="root_no_privileges_message">    无法获得权限。您想退出程序吗？\n如果您已授予(root)超级用户权限，可能重启应用程序后才会生效。
+    </string>
+    <string name="disable_auto_profile">禁用自动分析</string>
+    <string name="touchpad_input">触摸板输入</string>
+    <string name="launch_app">启动应用</string>
+    <string name="use_shizuku">使用 Shizuku</string>
+    <string name="pointer">指针模式</string>
+    <string name="open_editor_as_overlay">以叠加方式打开编辑器</string>
+    <!--  Keymap editor  -->
+    <string name="d_pad">方向键</string>
+    <string name="crosshair">十字线</string>
+    <string name="left_click">左键单击</string>
+    <string name="swipe_key">滑动键</string>
+    <string name="shift_key">切换键</string>
+    <string name="add_key">添加键</string>
+    <string name="save">保存</string>
+    <!--  Mouse Aim  -->
+    <string name="toggle">切换</string>
+    <string name="hold">按住</string>
+    <!--  Pointer Mode  -->
+    <string name="combined">组合</string>
+    <string name="overlay">叠加</string>
+    <string name="system">跟随系统</string>
+    <!--  Touchpad  -->
+    <string name="relative">相对模式</string>
+    <string name="disabled">禁用</string>
+    <string name="direct">直接模式</string>
+    <string name="shizuku_not_authorized_title">未获得 Shizuku 授权</string>
+    <string name="shizuku_not_authorized_message">在 Shizuku 中为 AA Mouse Pro 授权后继续</string>
+    <string name="shizuku_not_installed_title">Shizuku is not installed</string>
+    <string name="shizuku_not_installed_message">Install the Shizuku app before selecting Shizuku input mode.</string>
+    <string name="test_input_service_inactive">Start the keymapper service before testing input.</string>
+    <string name="test_input_root_unavailable">Root access is unavailable. Grant AA Mouse Pro root access before testing input.</string>
+    <string name="test_input_ready">%1$s mode is active. Connect a keyboard or mouse to test.</string>
+    <string name="activate_with">激活使用</string>
+    <string name="grave_key">~ 键</string>
+    <string name="x_sensitivity">X轴灵敏度</string>
+    <string name="y_sensitivity">Y轴灵敏度</string>
+    <string name="apply_non_linear_scaling">使用非线性缩放</string>
+    <string name="import_export">导入/导出</string>
+    <string name="import_profiles">导入配置</string>
+    <string name="import_previously_exported_profiles_from_storage">导入之前从存储中导出的配置。</string>
+    <string name="export_profiles">导出配置</string>
+    <string name="export_profiles_to_disk_for_restoring_later_or_sharing">将配置导出到内部存储以备份或共享。</string>
+    <string name="export_selected">导出已选</string>
+    <string name="select_all">选择全部</string>
+    <string name="import_button">导入</string>
+    <string name="rename">重命名</string>
+    <string name="delete">删除</string>
+    <string name="enabled">启用</string>
+    <string name="no_profile_selected">未选择配置文件</string>
+    <string name="select_profile_from_below">点击下方列表中的配置以选择它</string>
+    <string name="detected_shizuku">检测到Shizuku</string>
+    <string name="use_shizuku_for_activation">要使用Shizuku激活吗？</string>
+    <string name="add_games">添加游戏</string>
+    <string name="macro">鼠标宏</string>
+    <string name="loading">正在加载…</string>
+    <string name="camera">镜头</string>
+    <string name="press_any_key_to_stop_recording">按任意键停止录制……</string>
+    <string name="advanced">高级</string>
+    <string name="shizuku_not_running_title">Shizuku未运行</string>
+    <string name="shizuku_not_running_message">Start the Shizuku service, then return to AA Mouse Pro.</string>
+    <string name="shizuku_install_required">Install Shizuku to use this input mode</string>
+    <string name="shizuku_start_required">Start Shizuku to use this input mode</string>
+    <string name="edit">编辑</string>
+    <string name="show_controls_on_screen">在屏幕上显示控件</string>
+    <string name="select_a_display">选择显示器</string>
+    <string name="no_displays_found">未找到显示器</string>
+    <string name="display_id">显示器 #%1$s</string>
+    <string name="opacity">不透明度</string>
+    <string name="floating_keys_size">悬浮键大小</string>
+    <string name="mouse_walk">鼠标行走</string>
+    <string name="reset">重置</string>
+    <!-- Import/Export functionality -->
+    <string name="default_backup_name">backup.zip</string>
+    <string name="error_export_failed">导出失败</string>
+    <string name="action_retry">重试</string>
+    <string name="msg_backup_saved">备份保存成功</string>
+    <string name="error_save_failed">保存失败</string>
+    <string name="msg_profiles_imported">配置导入成功</string>
+    <string name="msg_all_profiles_exist" tools:ignore="MissingTranslation">所有配置均已存在，未导入任何内容</string>
+    <string name="error_import_failed">导入失败</string>
+    <string name="share">分享</string>
+    <string name="touch_jitter">触控坐标抖动</string>
+    <string name="touch_jitter_spread">抖动范围</string>
+    <string name="touch_jitter_spread_px">触控抖动范围: %d 像素</string>
+    <string name="quick_settings_tile_name">AA Mouse Pro</string>
+    <string name="input_mode">输入模式</string>
+    <string name="input_mode_root">Root</string>
+    <string name="input_mode_shizuku">Shizuku (ADB)</string>
+    <string name="input_mode_changed">Input Mode: %1$s</string>
+    <string name="block_keyboard_input">Block raw keyboard input</string>
+    <string name="block_keyboard">Block Keyboard</string>
+    <string name="keyboard_blocked">Keyboard input blocked</string>
+    <string name="keyboard_unblocked">Keyboard input unblocked</string>
+</resources>
