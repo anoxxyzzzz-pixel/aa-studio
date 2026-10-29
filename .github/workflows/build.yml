@@ -20,20 +20,20 @@ jobs:
         run: gradle assembleRelease --stacktrace
       - name: Ringkasan APK
         run: |
-          cp app/build/outputs/apk/release/app-release.apk AA-Studio.apk
-          ls -l AA-Studio.apk
-          echo "::notice title=Ukuran APK::$(stat -c %s AA-Studio.apk) bytes"
+          cp app/build/outputs/apk/release/app-release.apk AA-Mouse-Pro.apk
+          ls -l AA-Mouse-Pro.apk
+          echo "::notice title=Ukuran APK::$(stat -c %s AA-Mouse-Pro.apk) bytes"
       - uses: actions/upload-artifact@v4
         with:
-          name: AA-Studio-apk
-          path: AA-Studio.apk
+          name: AA-Mouse-Pro-apk
+          path: AA-Mouse-Pro.apk
       - name: Publikasikan sebagai GitHub Release (link unduh langsung)
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --cleanup-tag -y || true
-          gh release create latest AA-Studio.apk \
-            --title "AA Studio (terbaru)" \
-            --notes "v2.1 (commit ${GITHUB_SHA::7}). Baru: Web Source offline (impor .html/.zip, jalan tanpa internet, suara tetap ada). Unduh AA-Studio.apk lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi yang ditandatangani kunci sendiri, bukan dari Play Store; pilih Install anyway hanya jika Anda percaya sumbernya." \
+          gh release create latest AA-Mouse-Pro.apk \
+            --title "AA Mouse Pro v1.0" \
+            --notes "AA Mouse Pro v1.0 (commit ${GITHUB_SHA::7}). Baru: Web Source offline (impor .html/.zip, jalan tanpa internet, suara tetap ada). Unduh AA-Mouse-Pro.apk lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi yang ditandatangani kunci sendiri, bukan dari Play Store; pilih Install anyway hanya jika Anda percaya sumbernya." \
             --latest

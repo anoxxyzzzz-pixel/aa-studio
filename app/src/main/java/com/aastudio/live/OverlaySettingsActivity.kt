@@ -93,12 +93,12 @@ class OverlaySettingsActivity : Activity() {
             status.text = "Status: AKTIF"
             status.setTextColor(Ui.OK)
             status.background = Ui.box(this, Ui.WHITE, Ui.OK)
-            help.text = "Izin sudah diberikan. Tekan ikon AA Studio untuk menampilkan editor di atas aplikasi lain."
+            help.text = "Izin sudah diberikan. Tekan ikon AA Mouse Pro untuk menampilkan editor di atas aplikasi lain."
         } else {
             status.text = "Status: BELUM AKTIF"
             status.setTextColor(Ui.BAD)
             status.background = Ui.box(this, Ui.WHITE, Ui.BAD)
-            help.text = "Cara mengaktifkan: tekan tombol di bawah, cari \"AA Studio\" bila diminta, " +
+            help.text = "Cara mengaktifkan: tekan tombol di bawah, cari \"AA Mouse Pro\" bila diminta, " +
                 "lalu nyalakan \"Izinkan tampil di atas aplikasi lain\". Setelah itu kembali ke aplikasi ini; " +
                 "status akan diperiksa ulang otomatis."
         }
@@ -111,7 +111,7 @@ class OverlaySettingsActivity : Activity() {
             startActivity(intent)
         } catch (e: ActivityNotFoundException) {
             help.text = "Halaman pengaturan ini tidak tersedia di perangkat Anda. Buka manual: " +
-                "Pengaturan > Aplikasi > AA Studio > Tampil di atas aplikasi lain (nama menu bisa berbeda " +
+                "Pengaturan > Aplikasi > AA Mouse Pro > Tampil di atas aplikasi lain (nama menu bisa berbeda " +
                 "di tiap merek HP). Editor dan Web Source tetap bisa dipakai tanpa izin ini."
         }
     }

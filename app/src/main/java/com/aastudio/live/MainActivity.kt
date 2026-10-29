@@ -56,7 +56,7 @@ class MainActivity : Activity() {
         col.addView(logo, Ui.lp(Ui.dp(this, 84), Ui.dp(this, 84)))
 
         col.addView(
-            Ui.text(this, "AA Studio", 24f, true),
+            Ui.text(this, "AA Mouse Pro", 24f, true),
             Ui.lpM(Ui.MATCH, Ui.WRAP, 0f, 0, Ui.dp(this, 10), 0, 0)
         )
         col.addView(

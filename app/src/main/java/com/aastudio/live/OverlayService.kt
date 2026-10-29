@@ -120,7 +120,7 @@ class OverlayService : Service(), EditLayer.Host {
     private fun startAsForeground() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Overlay AA Studio", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, "Overlay AA Mouse Pro", NotificationManager.IMPORTANCE_LOW)
         )
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val stopIntent = PendingIntent.getService(
@@ -144,7 +144,7 @@ class OverlayService : Service(), EditLayer.Host {
         ).build()
         val n = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notif)
-            .setContentTitle("AA Studio — overlay aktif")
+            .setContentTitle("AA Mouse Pro — overlay aktif")
             .setContentText("Ketuk untuk daftar proyek")
             .setContentIntent(openIntent)
             .setOngoing(true)

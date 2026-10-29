@@ -11,8 +11,8 @@ android {
         applicationId = "com.aastudio.live"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "2.1"
+        versionCode = 4
+        versionName = "1.0"
     }
 
     compileOptions {
