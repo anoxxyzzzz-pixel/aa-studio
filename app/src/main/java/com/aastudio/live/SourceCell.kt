@@ -83,6 +83,11 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
             handler?.cancel()
         }
 
+        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+            val u = request?.url ?: return null
+            return LocalWeb.serve(context, u)
+        }
+
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val scheme = request?.url?.scheme?.lowercase()
             return !(scheme == "http" || scheme == "https")
@@ -90,6 +95,11 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
     }
 
     private val chrome = object : WebChromeClient() {
+        override fun onConsoleMessage(m: android.webkit.ConsoleMessage?): Boolean {
+            Log.i("AAStudio-js", m?.message() ?: "")
+            return true
+        }
+
         override fun onProgressChanged(view: WebView?, newProgress: Int) {
             progress.progress = newProgress
         }
@@ -160,7 +170,17 @@ class SourceCell(context: Context, var item: SourceItem) : FrameLayout(context) 
         }
         loadedUrl = item.url
         hideError()
+        // Tanpa internet: pakai cache halaman yang pernah dibuka. Online: perilaku normal.
+        web.settings.cacheMode = if (online()) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
         web.loadUrl(r.url)
+    }
+
+    private fun online(): Boolean = try {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    } catch (e: Exception) {
+        true
     }
 
     fun applyAudio(master: AudioSettings, force: Boolean) {

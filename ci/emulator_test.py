@@ -215,6 +215,7 @@ if tap_text("+"):
     f = find("", True, "EditText")
     nodes = [n for n in ui_nodes() if "EditText" in n["cls"]]
     info(f"EditText ditemukan: {len(nodes)}")
+    check("Panel Tambah menampilkan tombol impor offline", find("Impor file offline", False, "Button") is not None, "")
     if nodes:
         sh(f"input tap {nodes[0]['cx']} {nodes[0]['cy']}")
         time.sleep(0.5)
@@ -362,6 +363,127 @@ if btn:
 after = music_idx()
 check("Tombol 'Maksimalkan volume media' menaikkan volume sistem", bool(btn) and after > before or after >= 10, f"sebelum={before}, sesudah={after}")
 check("Tidak ada crash selama pengujian", not crashes(), "; ".join(crashes()))
+
+
+# ---------------------------------------------------------------- 10. offline
+section("10. Mode offline (tanpa internet)")
+import wave, struct, math, zipfile, os
+def mkwav(path, secs=2):
+    w = wave.open(path, "w"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+    w.writeframes(b"".join(struct.pack("<h", int(12000 * math.sin(2 * math.pi * 440 * i / 22050))) for i in range(22050 * secs)))
+    w.close()
+mkwav("/tmp/tone.wav")
+HTML = """<!doctype html><meta charset=utf-8><body style="background:#123;color:#fff"><h1>OFFLINE OK</h1>
+<audio id=a src="tone.wav" loop autoplay></audio>
+<script>
+var a=document.getElementById('a');
+a.addEventListener('playing',function(){console.log('AA_PLAYING');});
+a.play().catch(function(e){console.log('AA_PLAYFAIL '+e);});
+fetch('/%2e%2e/projects/seed0001.json').then(function(r){return r.text().then(function(t){console.log('AA_TRAV '+r.status+' '+(t.indexOf('seed0001')>=0?'LEAK':'safe'));});}).catch(function(e){console.log('AA_TRAV err');});
+fetch('tone.wav').then(function(r){console.log('AA_FETCH '+r.status);});
+</script>"""
+open("/tmp/index.html", "w").write(HTML)
+run("adb push /tmp/index.html /data/local/tmp/index.html"); run("adb push /tmp/tone.wav /data/local/tmp/tone.wav")
+sh(f"mkdir -p /data/data/{PKG}/files/local/t1 && cp /data/local/tmp/index.html /data/local/tmp/tone.wav /data/data/{PKG}/files/local/t1/ && chown -R {uid}:{uid} /data/data/{PKG}/files/local && chmod -R u+rwX /data/data/{PKG}/files/local")
+def mkproj(pid, items):
+    d = {"version": 2, "id": pid, "name": pid, "updated": int(time.time() * 1000), "items": items,
+         "audio": {"volume": 100, "muted": False, "autoplay": True, "soundUri": "", "soundName": ""},
+         "overlay": {"widthPercent": 60, "touchEnabled": False}}
+    open(f"/tmp/{pid}.json", "w").write(json.dumps(d))
+    run(f"adb push /tmp/{pid}.json /data/local/tmp/{pid}.json")
+    sh(f"cp /data/local/tmp/{pid}.json /data/data/{PKG}/files/projects/{pid}.json && chown {uid}:{uid} /data/data/{PKG}/files/projects/{pid}.json && chmod 660 /data/data/{PKG}/files/projects/{pid}.json")
+def item(i, name, url):
+    return {"id": i, "name": name, "url": url, "x": 240, "y": 270, "w": 960, "h": 540, "visible": True, "locked": False, "muted": False, "volume": 100}
+mkproj("off0001", [item("o1", "Lokal", "https://aa.local/t1/index.html")])
+mkproj("cache001", [item("c1", "Example", "https://example.com/")])
+def start(pid, act="RUN"):
+    sh("am stopservice -n %s/.OverlayService" % PKG); time.sleep(2)
+    sh(f"am start-foreground-service -a com.aastudio.live.{act} --es project_id {pid} -n %s/.OverlayService" % PKG)
+def jslog():
+    return run("adb logcat -d -s AAStudio:I AAStudio-js:I AAStudio:W", 30)
+
+# C1: isi cache saat online
+run("adb logcat -c")
+sh("svc wifi enable"); sh("svc data enable"); time.sleep(5)
+on = "bytes from" in sh("ping -c 1 -W 3 8.8.8.8")
+info(f"online sebelum uji cache: {on}")
+start("cache001"); time.sleep(20)
+lg = jslog()
+cache_filled = "page finished url=https://example.com" in lg
+info("cache terisi (online): %s" % cache_filled)
+
+# offline
+sh("svc wifi disable"); sh("svc data disable"); time.sleep(5)
+off = "bytes from" not in sh("ping -c 1 -W 3 8.8.8.8")
+check("Jaringan benar-benar mati (ping gagal)", off, "")
+
+# A: halaman lokal + suara tanpa internet
+run("adb logcat -c")
+start("off0001"); time.sleep(15)
+lg = jslog()
+info("log offline lokal: " + " | ".join(l.split(": ", 1)[-1] for l in lg.splitlines() if "AAStudio" in l)[:600])
+check("Halaman lokal termuat tanpa internet", "page finished url=https://aa.local/t1/index.html" in lg, "")
+check("Audio di halaman lokal berbunyi tanpa internet (event playing)", "AA_PLAYING" in lg, "")
+pb = sh("dumpsys audio").replace("\n", " ")
+check("Sistem audio mencatat pemutaran dari aplikasi", "state:started" in pb.replace(" ", "") or "state:started" in pb, "")
+check("Anti path-traversal: file di luar folder lokal tidak bisa dibaca", "AA_TRAV" in lg and "LEAK" not in lg, "")
+check("Berkas lokal bisa diambil (fetch 200)", "AA_FETCH 200" in lg, "")
+snap("offline-local")
+
+# C2: cache saat offline
+if cache_filled:
+    run("adb logcat -c")
+    start("cache001"); time.sleep(15)
+    lg = jslog()
+    check("Halaman online yang pernah dibuka tampil dari cache saat offline", "page finished url=https://example.com" in lg and "load error" not in lg, "")
+else:
+    info("uji cache dilewati: halaman tidak sempat termuat saat online di emulator")
+
+# B: impor ZIP lewat pemilih file
+os.makedirs("/tmp/zsite/site", exist_ok=True)
+open("/tmp/zsite/site/index.html", "w").write(HTML.replace("OFFLINE OK", "ZIP OK"))
+mkwav("/tmp/zsite/site/tone.wav")
+with zipfile.ZipFile("/tmp/offline_test.zip", "w") as z:
+    z.write("/tmp/zsite/site/index.html", "site/index.html"); z.write("/tmp/zsite/site/tone.wav", "site/tone.wav")
+run("adb push /tmp/offline_test.zip /sdcard/Download/offline_test.zip")
+sh("am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/offline_test.zip")
+start("off0001", "EDIT"); time.sleep(6)
+ok_btn = False
+if tap_text("+"):
+    time.sleep(1.5)
+    b = find("Impor file offline", False, "Button")
+    if b:
+        sh(f"input tap {b['cx']} {b['cy']}"); time.sleep(5)
+        ok_btn = True
+check("Tombol impor menyembunyikan overlay agar pemilih file terlihat", ok_btn and len(overlay_windows()) == 0, f"overlay tersisa={len(overlay_windows())}")
+focus = sh("dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'")
+info("fokus: " + " ".join(focus.split())[:200])
+picked = False
+if tap_text("offline_test.zip") or False:
+    picked = True
+else:
+    info("zip tidak langsung terlihat; teks: " + ", ".join(n["text"] for n in ui_nodes() if n["text"])[:300])
+    d = next((n for n in ui_nodes() if "roots" in n["desc"].lower() or "drawer" in n["desc"].lower() or "menu" in n["desc"].lower()), None)
+    if d:
+        sh(f"input tap {d['cx']} {d['cy']}"); time.sleep(1.5)
+        if tap_text("Downloads"):
+            time.sleep(2)
+            picked = tap_text("offline_test.zip")
+    if not picked:
+        info("teks akhir: " + ", ".join(n["text"] + "/" + n["desc"] for n in ui_nodes() if n["text"] or n["desc"])[:500])
+time.sleep(6)
+pj = project_json("off0001") or {"items": []}
+info("item proyek off0001: " + json.dumps([i["url"] for i in pj["items"]]))
+imported = len(pj["items"]) == 2 and pj["items"][1]["url"].startswith("https://aa.local/") and pj["items"][1]["url"].endswith("/site/index.html")
+check("Impor ZIP via pemilih file menambah Web Source offline", picked and imported, "")
+check("Editor kembali tampil setelah impor", len(overlay_windows()) >= 1, f"{len(overlay_windows())} jendela")
+if imported:
+    run("adb logcat -c")
+    start("off0001"); time.sleep(15)
+    lg = jslog()
+    check("Hasil impor ZIP dimuat & berbunyi tanpa internet", lg.count("AA_PLAYING") >= 2 and "https://aa.local/" in lg and "/site/index.html" in lg, "")
+sh("svc wifi enable"); sh("svc data enable")
+check("Tidak ada crash pada uji offline", not crashes(), "; ".join(crashes()))
 
 # ---------------------------------------------------------------- ringkasan
 section("RINGKASAN")

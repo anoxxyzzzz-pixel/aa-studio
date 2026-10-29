@@ -40,6 +40,7 @@ class EditLayer(
     interface Host {
         fun onChanged()
         fun onRequestStream()
+        fun onRequestImport()
     }
 
     private val d = resources.displayMetrics.density
@@ -459,6 +460,11 @@ class EditLayer(
         val lp = LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP)
         lp.topMargin = dp(10)
         c.addView(add, lp)
+        val imp = Ui.button(context, "Impor file offline (.html / .zip)", false) { host.onRequestImport() }
+        val lp2 = LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP)
+        lp2.topMargin = dp(8)
+        c.addView(imp, lp2)
+        c.addView(Ui.text(context, "File offline tetap jalan tanpa internet, termasuk suaranya.", 11f, false, Ui.MUTED))
         showPanel("Tambah Web Source", c)
         url.requestFocus()
     }

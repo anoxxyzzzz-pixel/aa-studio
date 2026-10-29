@@ -105,6 +105,7 @@ class OverlayService : Service(), EditLayer.Host {
                 project = store.load(p.id) ?: p
             }
             touchEnabled = project?.overlay?.touchEnabled ?: false
+            if (action == ACTION_ADD_LOCAL) addLocalItem(intent.getStringExtra(EXTRA_URL), intent.getStringExtra(EXTRA_NAME))
             showMode(if (action == ACTION_RUN) Mode.RUN else Mode.EDIT)
             running = true
         } catch (e: Exception) {
@@ -420,6 +421,35 @@ class OverlayService : Service(), EditLayer.Host {
         scheduleSave()
     }
 
+    override fun onRequestImport() {
+        handler.post {
+            if (project != null && mode == Mode.EDIT) {
+                flushSave()
+                clearWindows()
+                try {
+                    startActivity(Intent(this, ImportActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (e: Exception) {
+                    Ui.toast(this, "Tidak bisa membuka pemilih file")
+                    showMode(Mode.EDIT)
+                }
+            }
+        }
+    }
+
+    private fun addLocalItem(url: String?, name: String?) {
+        val p = project ?: return
+        if (url.isNullOrBlank()) return
+        val n = p.items.size % 5
+        val w = 1152
+        val h = 648
+        val it = SourceItem(name = name?.ifBlank { null } ?: "Offline", url = url, w = w, h = h)
+        it.x = (CANVAS_W - w) / 2 + n * 20
+        it.y = (CANVAS_H - h) / 2 + n * 20
+        p.items.add(it)
+        flushSave()
+        Ui.toast(this, "Web Source offline ditambahkan")
+    }
+
     override fun onRequestStream() {
         // Ditunda agar tidak melepas jendela di tengah dispatch sentuhan/tombol miliknya sendiri.
         handler.post {
@@ -467,6 +497,9 @@ class OverlayService : Service(), EditLayer.Host {
         const val ACTION_RELOAD = "com.aastudio.live.RELOAD"
         const val ACTION_STOP = "com.aastudio.live.STOP"
         const val EXTRA_PROJECT = "project_id"
+        const val EXTRA_URL = "url"
+        const val EXTRA_NAME = "name"
+        const val ACTION_ADD_LOCAL = "com.aastudio.live.ADD_LOCAL"
         private const val CHANNEL_ID = "overlay"
         private const val NOTIF_ID = 4201
 
