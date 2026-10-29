@@ -377,6 +377,7 @@ HTML = """<!doctype html><meta charset=utf-8><body style="background:#123;color:
 <audio id=a src="tone.wav" loop autoplay></audio>
 <script>
 var a=document.getElementById('a');
+window.addEventListener('load',function(){console.log('AA_LOAD');});setTimeout(function(){console.log('AA_STATE '+document.readyState);},3000);
 a.addEventListener('playing',function(){console.log('AA_PLAYING');});
 a.play().catch(function(e){console.log('AA_PLAYFAIL '+e);});
 fetch('/%2e%2e/projects/seed0001.json').then(function(r){return r.text().then(function(t){console.log('AA_TRAV '+r.status+' '+(t.indexOf('seed0001')>=0?'LEAK':'safe'));});}).catch(function(e){console.log('AA_TRAV err');});
@@ -421,7 +422,7 @@ check("Jaringan benar-benar mati (ping gagal)", off, "")
 run("adb logcat -c")
 start("off0001"); time.sleep(15)
 lg = jslog()
-info("log offline lokal: " + " | ".join(l.split(": ", 1)[-1] for l in lg.splitlines() if "AAStudio" in l)[:600])
+info("log offline lokal: " + " | ".join(dict.fromkeys(l.split(": ", 1)[-1] for l in lg.splitlines() if "AAStudio" in l))[:900])
 check("Halaman lokal termuat tanpa internet", "page finished url=https://aa.local/t1/index.html" in lg, "")
 check("Audio di halaman lokal berbunyi tanpa internet (event playing)", "AA_PLAYING" in lg, "")
 pb = sh("dumpsys audio").replace("\n", " ")
