@@ -40,7 +40,7 @@ object Diag {
     fun explain(dir: File?): String {
         val log = read(dir)
         return when {
-            log == null -> "Shizuku tidak menjalankan server AA Mouse Pro sama sekali (proses tidak pernah mulai). Buka aplikasi Shizuku, hentikan lalu mulai ulang, dan pastikan AA Mouse Pro diizinkan."
+            log == null -> "Server tidak meninggalkan jejak (belum mulai, atau tidak bisa menulis log). Mulai ulang Shizuku lalu coba lagi."
             log.contains("ERROR") -> "Server mulai tapi gagal: " + log.substringAfter("ERROR").trim().lineSequence().take(3).joinToString(" ").take(260)
             log.contains("ready") -> "Server berjalan tapi tidak merespons ke aplikasi. Mulai ulang Shizuku lalu coba lagi."
             else -> "Server berhenti saat mulai: " + log.trim().take(200)

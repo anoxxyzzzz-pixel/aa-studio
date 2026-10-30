@@ -59,6 +59,7 @@ class RemoteService(context: Context) : IRemoteService.Stub() {
     }
 
     init {
+        fixShellPackage(context)
         Diag.mark("started uid=${android.os.Process.myUid()} pid=${android.os.Process.myPid()}")
         try {
             loadLibraries()
@@ -422,6 +423,46 @@ class RemoteService(context: Context) : IRemoteService.Stub() {
 
     companion object {
         const val TAG = "xtmapper-server"
+
+        /**
+         * Server dijalankan Shizuku sebagai user shell (uid 2000), tetapi context-nya membawa nama paket
+         * aplikasi. Sistem menolak panggilan (SecurityException: "Given calling package ... does not match
+         * caller's uid 2000"). Solusi: ganti nama paket yang dilaporkan context menjadi com.android.shell.
+         * Resource aplikasi tetap dipakai. Root (uid 0) dan system tidak terpengaruh.
+         */
+        @JvmStatic
+        fun fixShellPackage(ctx: Context) {
+            val uid = android.os.Process.myUid()
+            if (uid == 0 || uid == 1000) return
+            val shell = "com.android.shell"
+            val impl = RemoteServiceShell.getContextImpl(ctx)
+            fun setField(o: Any, cls: Class<*>, name: String) {
+                try {
+                    val f = cls.getDeclaredField(name)
+                    f.isAccessible = true
+                    f.set(o, shell)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "fixShellPackage: $name: $e")
+                }
+            }
+            setField(impl, impl.javaClass, "mBasePackageName")
+            setField(impl, impl.javaClass, "mOpPackageName")
+            try {
+                val cr = impl.contentResolver
+                setField(cr, android.content.ContentResolver::class.java, "mPackageName")
+            } catch (e: Throwable) {
+                Log.w(TAG, "fixShellPackage: resolver: $e")
+            }
+            if (Build.VERSION.SDK_INT >= 31) try {
+                val f = impl.javaClass.getDeclaredField("mAttributionSource")
+                f.isAccessible = true
+                val old = f.get(impl) as android.content.AttributionSource
+                f.set(impl, android.content.AttributionSource.Builder(uid).setPackageName(shell)
+                    .setAttributionTag(old.attributionTag).build())
+            } catch (e: Throwable) {
+                Log.w(TAG, "fixShellPackage: attribution: $e")
+            }
+        }
 
         fun loadLibraries() {
             System.loadLibrary("mouse_read")

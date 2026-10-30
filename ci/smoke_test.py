@@ -96,6 +96,17 @@ info("proses: " + sh("ps -A | grep app_process").strip()[:200])
 log = run("adb logcat -d | grep -E 'xtmapper-server|AndroidRuntime|FATAL|UnsatisfiedLink' | tail -20", 30)
 info("logcat server: " + " | ".join(log.splitlines())[:1500])
 
+info("== uji perbaikan SecurityException (shell uid) ==")
+for flag in ("", "--fix"):
+    out = run(f"adb shell 'app_process -Djava.library.path={libdir} -Djava.class.path={ai} / xtr.keymapper.server.SelfTest {flag} 2>&1'", 60)
+    info("selftest %r: %s" % (flag, " | ".join(l for l in out.splitlines() if "SELFTEST" in l or "Exception" in l)[:500]))
+    if flag == "":
+        before = out
+    else:
+        after = out
+check("Sebelum perbaikan: reproduksi SecurityException uid 2000 (uji valid)", "SecurityException" in before and "SELFTEST_BEFORE OK" not in before, "")
+check("Sesudah perbaikan: context server boleh memanggil sistem", "SELFTEST_AFTER OK" in after, "")
+
 check("Tidak ada crash", not crashes(), "; ".join(crashes()))
 fails = [n for n, ok in RESULTS if not ok]
 print(f"TOTAL {len(RESULTS)} pemeriksaan, {len(RESULTS)-len(fails)} lulus, {len(fails)} gagal")
