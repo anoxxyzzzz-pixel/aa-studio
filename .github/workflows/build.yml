@@ -17,12 +17,18 @@ jobs:
         with:
           gradle-version: 8.9
       - name: Build APK rilis (R8, ditandatangani)
-        run: gradle assembleRelease --stacktrace
+        run: gradle assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
+        shell: bash
       - name: Ringkasan APK
         run: |
           cp app/build/outputs/apk/release/app-release.apk AA-Mouse-OTG.apk
           ls -l AA-Mouse-OTG.apk
           echo "::notice title=Ukuran APK::$(stat -c %s AA-Mouse-OTG.apk) bytes"
+      - name: Tampilkan error kompilasi
+        if: failure()
+        run: |
+          E=$(grep -E "^e: |error:|FAILED|What went wrong" -A2 build.log | head -40 | sed ":a;N;\$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g")
+          echo "::error title=Build gagal::$E"
       - uses: actions/upload-artifact@v4
         with:
           name: AA-Mouse-OTG-apk

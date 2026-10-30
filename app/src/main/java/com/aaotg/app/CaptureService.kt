@@ -64,7 +64,7 @@ class CaptureService : Service(), CaptureView.Sink {
         val n = Notification.Builder(this, "cap")
             .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle("AA Mouse OTG aktif")
-            .addAction(Notification.Action.Builder(null, "Hentikan", stop).build())
+            .addAction(Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_notif), "Hentikan", stop).build())
             .build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(7, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(7, n)

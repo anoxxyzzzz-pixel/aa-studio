@@ -15,7 +15,8 @@ jobs:
         with:
           gradle-version: 8.9
       - name: Build APK rilis
-        run: gradle assembleRelease --stacktrace
+        run: gradle assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
+        shell: bash
       - name: Pasang Pillow (analisis piksel)
         run: pip install pillow --break-system-packages || pip install pillow
       - name: Enable KVM
