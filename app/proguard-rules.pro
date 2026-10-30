@@ -1,1 +1,6 @@
-# Tidak ada refleksi atau JavaScript bridge; aturan bawaan R8 sudah cukup.
+-keep class io.github.muntashirakon.** { *; }
+-keep class android.sun.** { *; }
+-keep class org.lsposed.hiddenapibypass.** { *; }
+-keep class aa.projek.mp.max.Injector { *; }
+-keep class aa.projek.mp.max.AdbConnectionManager { *; }
+-dontwarn **

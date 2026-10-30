@@ -48,4 +48,11 @@ android {
     }
 }
 
-// Sengaja tanpa dependensi tambahan: hanya Android SDK (APK kecil, RAM hemat).
+
+
+dependencies {
+    // Klien ADB di dalam aplikasi (debug nirkabel + debugging USB/TCP), tanpa Shizuku.
+    implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
+    implementation("com.github.MuntashirAkon:sun-security-android:1.1")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+}

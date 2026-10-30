@@ -14,9 +14,12 @@ import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 
-class CaptureService : Service(), CaptureView.Sink {
+class CaptureService : Service() {
     private lateinit var wm: WindowManager
     private var view: CaptureView? = null
+    private var lp: WindowManager.LayoutParams? = null
+    private var engine: Engine? = null
+    private var paused = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -36,7 +39,10 @@ class CaptureService : Service(), CaptureView.Sink {
             return START_NOT_STICKY
         }
         if (view == null) {
-            val v = CaptureView(this, this)
+            val eng = Engine(this, Profile.load(this)) { screenSize() }
+            eng.onToggle = { setPaused(!paused) }
+            engine = eng
+            val v = CaptureView(this, eng)
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -48,6 +54,7 @@ class CaptureService : Service(), CaptureView.Sink {
             lp.gravity = Gravity.TOP or Gravity.START
             wm.addView(v, lp)
             view = v
+            this.lp = lp
             v.requestFocus()
         }
         running = true
@@ -70,18 +77,35 @@ class CaptureService : Service(), CaptureView.Sink {
         else startForeground(7, n)
     }
 
+    private fun screenSize(): Pair<Int, Int> {
+        val b = wm.currentWindowMetrics.bounds
+        return b.width() to b.height()
+    }
+
+    /** Jeda: lepas pointer capture & fokus agar mouse/keyboard kembali normal. Lanjut: ambil lagi. */
+    private fun setPaused(p: Boolean) {
+        paused = p
+        val v = view ?: return
+        val l = lp ?: return
+        engine?.releaseAll()
+        if (p) {
+            v.releasePointerCapture()
+            l.flags = l.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        } else {
+            l.flags = l.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        }
+        wm.updateViewLayout(v, l)
+        Log.i("AAOTG", "PAUSED $p")
+        if (!p) v.post { v.requestFocus(); v.requestPointerCapture() }
+    }
+
     override fun onDestroy() {
+        engine?.releaseAll()
         running = false
         view?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         view = null
         super.onDestroy()
     }
-
-    // Sink (tahap berikutnya: dipetakan ke sentuhan)
-    override fun onMouseMove(dx: Float, dy: Float) {}
-    override fun onMouseButton(button: Int, down: Boolean) {}
-    override fun onScroll(v: Float) {}
-    override fun onKey(code: Int, down: Boolean, repeat: Boolean): Boolean = false
 
     companion object {
         const val ACTION_STOP = "aa.projek.mp.max.STOP"
