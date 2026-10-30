@@ -21,9 +21,9 @@ jobs:
         shell: bash
       - name: Ringkasan APK
         run: |
-          cp app/build/outputs/apk/release/app-release.apk AA-Mouse-OTG.apk
-          ls -l AA-Mouse-OTG.apk
-          echo "::notice title=Ukuran APK::$(stat -c %s AA-Mouse-OTG.apk) bytes"
+          cp app/build/outputs/apk/release/app-release.apk AA-Mouse-Pro.apk
+          ls -l AA-Mouse-Pro.apk
+          echo "::notice title=Ukuran APK::$(stat -c %s AA-Mouse-Pro.apk) bytes"
       - name: Tampilkan error kompilasi
         if: failure()
         run: |
@@ -31,15 +31,15 @@ jobs:
           echo "::error title=Build gagal::$E"
       - uses: actions/upload-artifact@v4
         with:
-          name: AA-Mouse-OTG-apk
-          path: AA-Mouse-OTG.apk
+          name: AA-Mouse-Pro-apk
+          path: AA-Mouse-Pro.apk
       - name: Publikasikan sebagai GitHub Release (link unduh langsung)
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --cleanup-tag -y || true
-          gh release create latest AA-Mouse-OTG.apk \
-            --title "AA Mouse OTG (terbaru)" \
-            --notes "AA Mouse OTG v1.0 (commit ${GITHUB_SHA::7}). Unduh APK lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi bertanda tangan sendiri, bukan dari Play Store." \
+          gh release create latest AA-Mouse-Pro.apk \
+            --title "AA Mouse Pro (terbaru)" \
+            --notes "AA Mouse Pro v1.0 (commit ${GITHUB_SHA::7}). Unduh APK lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi bertanda tangan sendiri, bukan dari Play Store." \
             --latest

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Uji AA Mouse OTG di emulator. Mouse/keyboard fisik ditiru dengan perangkat uinput virtual (root)."""
 import json, re, subprocess, sys, time, glob
-PKG = "com.aaotg.app"
+PKG = "aa.projek.mp.max"
 RESULTS = []
 def run(cmd, timeout=90):
     try:

@@ -1,4 +1,4 @@
-package com.aaotg.app
+package aa.projek.mp.max
 
 import android.app.Activity
 import android.content.Intent
@@ -13,7 +13,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 96, 48, 48) }
-        col.addView(TextView(this).apply { text = "AA Mouse OTG"; textSize = 24f })
+        col.addView(TextView(this).apply { text = "AA Mouse Pro"; textSize = 24f })
         val perm = Button(this).apply {
             text = "Izinkan tampil di atas aplikasi lain"
             setOnClickListener { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }

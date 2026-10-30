@@ -1,4 +1,4 @@
-package com.aaotg.app
+package aa.projek.mp.max
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -56,14 +56,14 @@ class CaptureService : Service(), CaptureView.Sink {
 
     private fun startFg() {
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel("cap", "AA Mouse OTG", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel("cap", "AA Mouse Pro", NotificationManager.IMPORTANCE_LOW))
         val stop = android.app.PendingIntent.getService(
             this, 1, Intent(this, CaptureService::class.java).setAction(ACTION_STOP),
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
         val n = Notification.Builder(this, "cap")
             .setSmallIcon(R.drawable.ic_notif)
-            .setContentTitle("AA Mouse OTG aktif")
+            .setContentTitle("AA Mouse Pro aktif")
             .addAction(Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_notif), "Hentikan", stop).build())
             .build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(7, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -84,7 +84,7 @@ class CaptureService : Service(), CaptureView.Sink {
     override fun onKey(code: Int, down: Boolean, repeat: Boolean): Boolean = false
 
     companion object {
-        const val ACTION_STOP = "com.aaotg.app.STOP"
+        const val ACTION_STOP = "aa.projek.mp.max.STOP"
         @Volatile var running = false
     }
 }

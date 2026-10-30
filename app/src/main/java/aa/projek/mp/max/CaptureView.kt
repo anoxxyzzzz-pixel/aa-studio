@@ -1,4 +1,4 @@
-package com.aaotg.app
+package aa.projek.mp.max
 
 import android.content.Context
 import android.util.Log

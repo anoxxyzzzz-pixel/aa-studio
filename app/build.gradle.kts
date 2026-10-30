@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.aaotg.app"
+    namespace = "aa.projek.mp.max"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aaotg.app"
+        applicationId = "aa.projek.mp.max"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
