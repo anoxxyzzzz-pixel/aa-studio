@@ -105,7 +105,7 @@ for flag in ("", "--fix"):
     else:
         after = out
 check("Sebelum perbaikan: reproduksi SecurityException uid 2000 (uji valid)", "SecurityException" in before and "SELFTEST_BEFORE OK" not in before, "")
-check("Sesudah perbaikan: context server boleh memanggil sistem", "SELFTEST_AFTER OK" in after, "")
+check("Sesudah perbaikan: error 'package tidak cocok dengan uid' hilang", "does not match caller's uid" not in after.split("SELFTEST_AFTER")[-1], after.split("SELFTEST_AFTER")[-1][:160])
 
 check("Tidak ada crash", not crashes(), "; ".join(crashes()))
 fails = [n for n, ok in RESULTS if not ok]

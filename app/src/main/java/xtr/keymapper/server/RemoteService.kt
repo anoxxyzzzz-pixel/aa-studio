@@ -128,6 +128,12 @@ class RemoteService(context: Context) : IRemoteService.Stub() {
             } catch (e: IllegalStateException) { // A14 QPR3 issue https://gist.github.com/RikkaW/be3fe4178903702c54ec73b2fc1187fe
                 cursorView = null
                 Log.e(TAG, e.message, e)
+            } catch (e: Exception) {
+                // Mis. SecurityException dari sistem (mis. HP Unisoc saat server berjalan sebagai shell).
+                // Server tetap harus jalan: lanjut tanpa kursor kustom (pakai pointer sistem).
+                cursorView = null
+                Log.e(TAG, "cursor overlay gagal, lanjut tanpa kursor kustom: $e", e)
+                Diag.mark("cursor overlay gagal: ${e.javaClass.simpleName}: ${e.message?.take(120)}")
             }
         }
     }
