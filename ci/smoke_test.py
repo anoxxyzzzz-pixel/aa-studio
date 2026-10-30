@@ -78,6 +78,24 @@ for n in nodes:
 check("Tidak crash setelah mengetuk tombol utama", not crashes(), "; ".join(crashes()))
 info("memori: " + " ".join(sh(f"dumpsys meminfo {PKG} | grep -E 'TOTAL PSS'").split())[:120])
 info("native libs: " + sh(f"ls /data/app/*/{PKG}*/lib/*/ 2>/dev/null").replace("\n", " ")[:200])
+
+# --- Uji proses server (jalur yang sama dengan Shizuku: app_process sebagai user shell)
+info("== uji server sebagai shell ==")
+run("adb unroot"); time.sleep(4); run("adb wait-for-device")
+sh(f"am force-stop {PKG}")
+ai = sh(f"pm path {PKG}").strip().replace("package:", "").splitlines()[0]
+libdir = ai.rsplit("/", 1)[0] + "/lib/x86_64"
+info("apk=%s libdir=%s whoami=%s" % (ai, libdir, sh("id").strip()))
+info("libs: " + sh(f"ls {libdir}").replace("\n", " "))
+run(f"adb shell 'nohup app_process -Djava.library.path={libdir} -Djava.class.path={ai} / xtr.keymapper.server.RemoteServiceShell --no-auto-launch --no-logcat > /data/local/tmp/srv.log 2>&1 &'", 20)
+time.sleep(15)
+info("srv.log: " + " | ".join(sh("cat /data/local/tmp/srv.log").splitlines())[:1500])
+svc = sh("service list | grep -i xtmapper")
+check("Server (RemoteService) berhasil start & terdaftar", "xtmapper" in svc, svc.strip())
+info("proses: " + sh("ps -A | grep app_process").strip()[:200])
+log = run("adb logcat -d | grep -E 'xtmapper-server|AndroidRuntime|FATAL|UnsatisfiedLink' | tail -20", 30)
+info("logcat server: " + " | ".join(log.splitlines())[:1500])
+
 check("Tidak ada crash", not crashes(), "; ".join(crashes()))
 fails = [n for n, ok in RESULTS if not ok]
 print(f"TOTAL {len(RESULTS)} pemeriksaan, {len(RESULTS)-len(fails)} lulus, {len(fails)} gagal")
