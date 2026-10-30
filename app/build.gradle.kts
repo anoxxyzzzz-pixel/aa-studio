@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.aastudio.live"
+    namespace = "com.aaotg.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aastudio.live"
+        applicationId = "com.aaotg.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "2.1"
+        versionCode = 1
+        versionName = "1.0"
     }
 
     compileOptions {

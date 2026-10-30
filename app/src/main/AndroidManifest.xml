@@ -2,57 +2,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Tampil di atas aplikasi lain (floating overlay). Harus diaktifkan pengguna lewat Pengaturan. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Overlay berjalan sebagai foreground service agar sah dan bisa dihentikan dari notifikasi. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
     <application
         android:allowBackup="false"
-        android:label="AA Studio"
+        android:label="AA Mouse OTG"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:theme="@style/AppTheme.Launch">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".EditorActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".OverlaySettingsActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".AudioActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize" />
-
-        <activity
-            android:name=".ImportActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:theme="@style/AppTheme.Launch" />
-
         <service
-            android:name=".OverlayService"
+            android:name=".CaptureService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Menangkap keyboard dan mouse OTG untuk dipetakan ke sentuhan layar" />
+        </service>
     </application>
 </manifest>
