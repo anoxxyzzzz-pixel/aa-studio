@@ -73,7 +73,36 @@ object RemoteServiceHelper {
         fun onConnection(service: IRemoteService?)
     }
 
-    class RemoteServiceConnection(private val cb: RootRemoteServiceCallback) : ServiceConnection {
+    class RemoteServiceConnection(private val callback: RootRemoteServiceCallback) : ServiceConnection {
+        private val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        private val timeout = Runnable {
+            Log.w(RemoteService.TAG, "bind timeout: service did not connect in 12s")
+            finish(null)
+        }
+
+        // Callback hanya dipanggil sekali: terhubung, gagal, atau waktu habis (tidak menggantung selamanya).
+        private fun finish(s: IRemoteService?) {
+            if (done.compareAndSet(false, true)) {
+                handler.removeCallbacks(timeout)
+                callback.onConnection(s)
+            }
+        }
+
+        fun startTimeout() {
+            handler.postDelayed(timeout, 12000)
+        }
+
+        override fun onNullBinding(name: ComponentName) {
+            Log.w(RemoteService.TAG, "null binding")
+            finish(null)
+        }
+
+        override fun onBindingDied(name: ComponentName) {
+            Log.w(RemoteService.TAG, "binding died")
+            finish(null)
+        }
+
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             val remote = IRemoteService.Stub.asInterface(service)
             RemoteServiceHelper.service = remote
@@ -84,12 +113,12 @@ object RemoteServiceHelper {
                     }
                 }, 0)
             } catch (_: RemoteException) {}
-            cb.onConnection(remote)
+            finish(remote)
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             RemoteServiceHelper.service = null
-            cb.onConnection(null)
+            finish(null)
         }
     }
 
@@ -175,6 +204,7 @@ object RemoteServiceHelper {
         val connection = RemoteServiceConnection(callback)
         if (useShizuku) {
             if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                connection.startTimeout()
                 bindShizukuService(context, connection)
             } else {
                 callback.onConnection(null)
@@ -182,6 +212,7 @@ object RemoteServiceHelper {
         } else {
             if (Shell.isAppGrantedRoot() != false) {
                 val intent = Intent(context, RootRemoteService::class.java)
+                connection.startTimeout()
                 RootService.bind(intent, connection)
             } else {
                 callback.onConnection(null)

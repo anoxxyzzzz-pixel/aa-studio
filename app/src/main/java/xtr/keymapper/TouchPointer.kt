@@ -204,7 +204,7 @@ class TouchPointer : Service() {
         ) { service: IRemoteService? ->
             if (service == null) {
                 Log.w("TouchPointer", "Remote service is null, cannot start server")
-                activityCallback?.updateCmdView1("Failed to connect to server (root/shizuku not available)")
+                activityCallback?.updateCmdView1("Gagal terhubung ke server. Pastikan Shizuku sedang berjalan (mulai ulang lewat Wireless debugging) dan AA Mouse Pro sudah diberi izin di aplikasi Shizuku, lalu coba lagi.")
                 return@getInstance
             }
             mService = service
