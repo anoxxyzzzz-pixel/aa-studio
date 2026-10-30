@@ -76,7 +76,7 @@ object AdbHub {
                 try {
                     ins.bufferedReader().forEachLine { l ->
                         Log.i(TAG, "SERVER $l")
-                        if (l.startsWith("READY")) serverReady = true
+                        if (l.startsWith("READY")) { serverReady = true; Log.i(TAG, "SERVER READY") }
                     }
                 } catch (_: Throwable) {}
                 serverReady = false

@@ -1,7 +1,9 @@
-// Membuat mouse + keyboard virtual (uinput) lalu menggerakkannya. Dijalankan di emulator sebagai root.
+// Mouse + keyboard virtual (uinput). Membaca perintah dari stdin:
+//  mm <dx> <dy> | bd | bu | rd | ru | kd <code> | ku <code> | q
 #include <fcntl.h>
 #include <linux/uinput.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -25,13 +27,21 @@ static int mk(const char *name, int *keys, int nk, int *rels, int nr) {
 }
 int main(void) {
     int mk_keys[] = {BTN_LEFT, BTN_RIGHT, BTN_MIDDLE}; int rels[] = {REL_X, REL_Y, REL_WHEEL};
-    int kb_keys[] = {KEY_A, KEY_W, KEY_SPACE};
+    int kb_keys[] = {KEY_A, KEY_W, KEY_S, KEY_D, KEY_SPACE, KEY_R};
     int mouse = mk("AA Test Mouse", mk_keys, 3, rels, 3);
-    int kb = mk("AA Test Keyboard", kb_keys, 3, 0, 0);
+    int kb = mk("AA Test Keyboard", kb_keys, 6, 0, 0);
     if (mouse < 0 || kb < 0) return 1;
     sleep(2); puts("CREATED"); fflush(stdout);
-    for (int i = 0; i < 12; i++) { ev(mouse, EV_REL, REL_X, 7); ev(mouse, EV_REL, REL_Y, -3); syn(mouse); usleep(50000); }
-    ev(mouse, EV_KEY, BTN_LEFT, 1); syn(mouse); usleep(100000); ev(mouse, EV_KEY, BTN_LEFT, 0); syn(mouse);
-    ev(kb, EV_KEY, KEY_W, 1); syn(kb); usleep(200000); ev(kb, EV_KEY, KEY_W, 0); syn(kb);
-    sleep(1); puts("DONE"); return 0;
+    char line[128];
+    while (fgets(line, sizeof line, stdin)) {
+        int a = 0, b = 0;
+        if (!strncmp(line, "mm", 2)) { sscanf(line + 2, "%d %d", &a, &b); ev(mouse, EV_REL, REL_X, a); ev(mouse, EV_REL, REL_Y, b); syn(mouse); }
+        else if (!strncmp(line, "bd", 2)) { ev(mouse, EV_KEY, BTN_LEFT, 1); syn(mouse); }
+        else if (!strncmp(line, "bu", 2)) { ev(mouse, EV_KEY, BTN_LEFT, 0); syn(mouse); }
+        else if (!strncmp(line, "kd", 2)) { sscanf(line + 2, "%d", &a); ev(kb, EV_KEY, a, 1); syn(kb); }
+        else if (!strncmp(line, "ku", 2)) { sscanf(line + 2, "%d", &a); ev(kb, EV_KEY, a, 0); syn(kb); }
+        else if (line[0] == 'q') break;
+        fflush(stdout);
+    }
+    return 0;
 }
