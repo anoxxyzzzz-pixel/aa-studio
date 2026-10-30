@@ -2,11 +2,6 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: "Terbitkan ke GitHub Release (hanya setelah diuji)"
-        type: boolean
-        default: false
 permissions:
   contents: write
 jobs:
@@ -17,29 +12,28 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
-          cache: gradle
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
       - name: Build APK rilis (R8, ditandatangani)
-        run: |
-          chmod +x gradlew
-          ./gradlew :app:assembleRelease --stacktrace
+        run: gradle assembleRelease --stacktrace
       - name: Ringkasan APK
         run: |
-          cp app/build/outputs/apk/release/*.apk AA-Mouse-Pro.apk
-          ls -l AA-Mouse-Pro.apk
-          echo "::notice title=Ukuran APK::$(stat -c %s AA-Mouse-Pro.apk) bytes"
-          unzip -l AA-Mouse-Pro.apk | sort -k1 -n -r | head -12
+          cp app/build/outputs/apk/release/app-release.apk AA-Studio.apk
+          ls -l AA-Studio.apk
+          echo "::notice title=Ukuran APK::$(stat -c %s AA-Studio.apk) bytes"
       - uses: actions/upload-artifact@v4
         with:
-          name: AA-Mouse-Pro-apk
-          path: AA-Mouse-Pro.apk
-      - name: Terbitkan GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish
+          name: AA-Studio-apk
+          path: AA-Studio.apk
+      - name: Publikasikan sebagai GitHub Release (link unduh langsung)
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --cleanup-tag -y || true
-          gh release create latest AA-Mouse-Pro.apk \
-            --title "AA Mouse Pro v1.0" \
-            --notes "AA Mouse Pro v1.0 (commit ${GITHUB_SHA::7}). Turunan XtMapper (GPL-3.0), kode sumber lengkap ada di repositori ini. Perlu Shizuku atau root untuk mengaktifkan. Jika Play Protect memperingatkan: ini APK pribadi bertanda tangan sendiri, bukan dari Play Store; pasang hanya jika Anda percaya sumbernya." \
+          gh release create latest AA-Studio.apk \
+            --title "AA Studio (terbaru)" \
+            --notes "v2.1 (commit ${GITHUB_SHA::7}). Baru: Web Source offline (impor .html/.zip, jalan tanpa internet, suara tetap ada). Unduh AA-Studio.apk lalu pasang (izinkan sumber tidak dikenal). Jika Play Protect memperingatkan: ini APK pribadi yang ditandatangani kunci sendiri, bukan dari Play Store; pilih Install anyway hanya jika Anda percaya sumbernya." \
             --latest
