@@ -59,8 +59,15 @@ class RemoteService(context: Context) : IRemoteService.Stub() {
     }
 
     init {
-        loadLibraries()
-        init()
+        Diag.mark("started uid=${android.os.Process.myUid()} pid=${android.os.Process.myPid()}")
+        try {
+            loadLibraries()
+            init()
+            Diag.mark("ready")
+        } catch (t: Throwable) {
+            Diag.error(t)
+            throw t
+        }
     }
 
     private fun getWindowManager(displayId: Int): WindowManager {

@@ -411,7 +411,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!isComposeServiceActive()) {
-            Toast.makeText(this, R.string.test_input_service_inactive, Toast.LENGTH_LONG).show()
+            // Nyalakan layanan otomatis agar uji input benar-benar berjalan.
+            startPointer()
             return
         }
         val modeName = if (config.isShizukuMode) "Shizuku (ADB)" else "Root"

@@ -204,6 +204,7 @@ object RemoteServiceHelper {
         val connection = RemoteServiceConnection(callback)
         if (useShizuku) {
             if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                Diag.clear(context.getExternalFilesDir(null))
                 connection.startTimeout()
                 bindShizukuService(context, connection)
             } else {

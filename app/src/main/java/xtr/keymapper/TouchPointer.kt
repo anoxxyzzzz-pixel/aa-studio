@@ -204,7 +204,13 @@ class TouchPointer : Service() {
         ) { service: IRemoteService? ->
             if (service == null) {
                 Log.w("TouchPointer", "Remote service is null, cannot start server")
-                activityCallback?.updateCmdView1("Gagal terhubung ke server. Pastikan Shizuku sedang berjalan (mulai ulang lewat Wireless debugging) dan AA Mouse Pro sudah diberi izin di aplikasi Shizuku, lalu coba lagi.")
+                val why = xtr.keymapper.server.Diag.explain(getExternalFilesDir(null))
+                Log.w("TouchPointer", "diag: $why")
+                mHandler.post {
+                    Toast.makeText(this, why, Toast.LENGTH_LONG).show()
+                    activityCallback?.updateCmdView1(why)
+                    activityCallback?.stopPointer()
+                }
                 return@getInstance
             }
             mService = service
