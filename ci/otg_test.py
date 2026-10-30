@@ -73,7 +73,11 @@ cmd("kd 17")                         # W -> joystick (jari id 0)
 for _ in range(10): cmd("mm 6 -2")   # gerak mouse -> kamera (jari id 1)
 cmd("bd")                            # klik kiri -> tembak (jari id 2)
 time.sleep(0.3); cmd("bu"); cmd("ku 17"); time.sleep(1)
-tp = [l for l in aalog().splitlines() if " TP " in l]
+full = aalog()
+info("log setelah input: " + " | ".join(l.split("AAOTG")[-1].strip() for l in full.splitlines() if " TP " not in l)[-900:])
+info("uin: " + str(p.poll()))
+info("logcat error: " + " | ".join(run("adb logcat -d -s InputDispatcher:W AndroidRuntime:E InputManager:W", 30).splitlines()[-6:])[:600])
+tp = [l for l in full.splitlines() if " TP " in l]
 info("TP contoh: " + " | ".join(l.split("AAOTG")[-1].strip() for l in tp[:3]) + " ... " + (tp[-1].split("AAOTG")[-1].strip() if tp else ""))
 maxp = max([int(re.search(r"pointers=(\d+)", l).group(1)) for l in tp] or [0])
 idsseen = set(re.findall(r"ids=\[([^\]]*)\]", " ".join(tp)))
