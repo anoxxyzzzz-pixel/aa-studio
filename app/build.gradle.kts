@@ -55,4 +55,5 @@ dependencies {
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
     implementation("com.github.MuntashirAkon:sun-security-android:1.1")
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("androidx.annotation:annotation:1.9.1")
 }
