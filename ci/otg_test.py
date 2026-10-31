@@ -136,6 +136,11 @@ dens = int(re.search(r"(\d+)", sh("wm density")).group(1)) / 160.0
 pl = re.search(r"PANEL_ADDED lp=(\d+),(\d+) size=(\d+)x(\d+)", run("adb logcat -d -s AAOTG:I", 30))
 nodes = [{"cx": int(pl.group(1)) + 40, "cy": int(pl.group(2)) + int(17 * dens)}] if pl else []   # tengah bilah judul panel
 before = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
+dw = sh("dumpsys window windows")
+for ln in dw.splitlines():
+    if PKG in ln and ("Window{" in ln or "frame" in ln.lower()): info("WIN " + ln.strip()[:200])
+info("ROT " + " ".join(sh("dumpsys display | grep -i -m3 'mCurrentOrientation\\|mBaseDisplayInfo'").split())[:300])
+info("wm " + sh("wm size").strip().replace("\n", " "))
 if nodes:
     n = nodes[0]; sh(f"input swipe {n['cx']} {n['cy']} {n['cx']-120} {n['cy']+90} 500"); time.sleep(2)
 after = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
