@@ -35,6 +35,19 @@
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <service
+            android:name=".PairingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Pairing debug nirkabel lewat notifikasi" />
+        </service>
+
+        <receiver
+            android:name=".PairingService$ReplyReceiver"
+            android:exported="false" />
+
+        <service
             android:name=".CaptureService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

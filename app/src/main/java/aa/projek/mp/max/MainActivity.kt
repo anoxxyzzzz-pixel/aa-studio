@@ -89,7 +89,19 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
 
-        val w = card("1. Aktivasi: Debug nirkabel (Android 11+)")
+        val n = card("1. Aktivasi: Pairing lewat notifikasi (disarankan)")
+        note(n, "Hubungkan HP ke Wi-Fi. Tekan tombol di bawah, lalu buka Opsi pengembang > Debug nirkabel > Pasangkan perangkat dengan kode pairing. Tarik notifikasi AA Mouse Pro, ketuk 'Isi kode', ketik 6 digit kode. Selesai: ADB tersambung dan server siap otomatis.")
+        btn(n, "Mulai pairing lewat notifikasi", true) {
+            if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+                toast("Izinkan notifikasi, lalu tekan tombol lagi")
+            } else {
+                startForegroundService(Intent(this, PairingService::class.java))
+                startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+            }
+        }
+
+        val w = card("1. Aktivasi manual: Debug nirkabel (Android 11+)")
         note(w, "Buka Opsi pengembang > Debug nirkabel > Pasangkan perangkat dengan kode. Isi port & kode pairing, lalu port koneksi (port di layar utama Debug nirkabel).")
         val pPort = field(w, "Port pairing (mis. 37123)")
         val pCode = field(w, "Kode pairing 6 digit")
