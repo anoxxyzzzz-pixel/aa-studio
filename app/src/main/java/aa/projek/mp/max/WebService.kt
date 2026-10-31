@@ -116,6 +116,7 @@ class WebService : Service() {
         // geser dari bilah atas
         var dx = 0f; var dy = 0f; var ox = 0; var oy = 0
         title.setOnTouchListener { _, e ->
+            android.util.Log.i("AAOTG", "PANEL_TOUCH ${e.actionMasked} raw=${e.rawX.toInt()},${e.rawY.toInt()} lp=${lp.x},${lp.y}")
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> { dx = e.rawX; dy = e.rawY; ox = lp.x; oy = lp.y }
                 MotionEvent.ACTION_MOVE -> {
@@ -142,6 +143,7 @@ class WebService : Service() {
             true
         }
         wm.addView(root, lp)
+        android.util.Log.i("AAOTG", "PANEL_ADDED lp=${lp.x},${lp.y} size=${lp.width}x${lp.height} screen=${sw}x${sh}")
         cell.load()
         panels.add(Panel(item, root, cell, lp))
     }

@@ -138,6 +138,7 @@ before = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
 if nodes:
     n = nodes[0]; sh(f"input swipe {n['cx']} {n['cy']} {n['cx']-120} {n['cy']+90} 500"); time.sleep(2)
 after = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
+info("panel log: " + " | ".join(l.split("AAOTG")[-1].strip() for l in run("adb logcat -d -s AAOTG:I", 30).splitlines() if "PANEL" in l)[:600])
 info(f"geser: judul ditemukan={bool(nodes)} x {before['x']}->{after['x']:.3f} y {before['y']}->{after['y']:.3f}")
 check("Panel Web Source bisa digeser & posisinya tersimpan", bool(nodes) and (abs(after["x"] - before["x"]) > 0.02 or abs(after["y"] - before["y"]) > 0.02), "")
 sh("svc wifi enable"); sh("svc data enable")
