@@ -18,7 +18,10 @@ def crashes():
     return [l for l in out.splitlines() if "FATAL EXCEPTION" in l or (PKG in l and "Exception" in l)][:10]
 def aalog(): return run("adb logcat -d -s AAOTG:I", 30)
 def ui_nodes():
-    sh("rm -f /sdcard/ui.xml"); run("adb shell uiautomator dump /sdcard/ui.xml", 40); run("adb pull /sdcard/ui.xml /tmp/ui.xml")
+    sh("rm -f /sdcard/ui.xml")
+    o = run("adb shell uiautomator dump --windows /sdcard/ui.xml", 40)
+    if "dumped" not in o: run("adb shell uiautomator dump /sdcard/ui.xml", 40)
+    run("adb pull /sdcard/ui.xml /tmp/ui.xml")
     try: root = ET.parse("/tmp/ui.xml").getroot()
     except Exception: return []
     out = []
@@ -48,8 +51,15 @@ info("tcpip: " + run("adb tcpip 5555").strip()); time.sleep(4); run("adb wait-fo
 info("props: secure=%s" % sh("getprop ro.adb.secure").strip())
 
 sh(f"am start -n {PKG}/.MainActivity"); time.sleep(4)
-sh("input swipe 540 1700 540 300 400"); sh("input swipe 540 1700 540 300 400"); time.sleep(1)
-ok = tap_text("Sambung ke 127.0.0.1")
+time.sleep(3)
+m = re.search(r"(\d+)x(\d+)", sh("wm size")); A, B = int(m.group(1)), int(m.group(2))
+SW, SH = max(A, B), min(A, B)   # aplikasi dikunci landscape
+info(f"layar landscape {SW}x{SH}")
+ok = False
+for _ in range(8):
+    ok = tap_text("Sambung ke 127.0.0.1")
+    if ok: break
+    sh(f"input swipe {int(SW*0.25)} {int(SH*0.85)} {int(SW*0.25)} {int(SH*0.15)} 400"); time.sleep(0.8)
 info("tombol sambung diketuk: %s" % ok)
 time.sleep(10)
 lg = aalog()
