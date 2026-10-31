@@ -27,6 +27,10 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var devices: TextView
     private lateinit var body: LinearLayout
+    private lateinit var colL: LinearLayout
+    private lateinit var colR: LinearLayout
+    private lateinit var cur: LinearLayout
+    private lateinit var webList: LinearLayout
     private val BG = Color.parseColor("#0F1115")
     private val CARD = Color.parseColor("#1A1E26")
     private val ACC = Color.parseColor("#4F8CFF")
@@ -41,7 +45,7 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(14), dp(16), dp(16))
         }
         c.addView(TextView(this).apply { text = title; setTextColor(Color.WHITE); textSize = 16f; typeface = Typeface.DEFAULT_BOLD })
-        body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        cur.addView(c, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         return c
     }
 
@@ -80,6 +84,13 @@ class MainActivity : Activity() {
         body.addView(TextView(this).apply { text = "AA Mouse Pro"; setTextColor(Color.WHITE); textSize = 26f; typeface = Typeface.DEFAULT_BOLD })
         body.addView(TextView(this).apply { text = "Keyboard & mouse OTG untuk game sentuh. Berjalan offline."; setTextColor(Color.parseColor("#9AA3B2")); textSize = 13f })
 
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        colL = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        colR = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        row.addView(colL, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
+        row.addView(colR, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
+        body.addView(row, LinearLayout.LayoutParams(-1, -2))
+        cur = colL
         val st = card("Status")
         status = TextView(this).apply { setTextColor(Color.WHITE); textSize = 13.5f; setPadding(0, dp(8), 0, 0) }
         st.addView(status)
@@ -124,6 +135,7 @@ class MainActivity : Activity() {
             AdbHub.connect(this, "127.0.0.1", port) { ok, m -> post(m); if (ok) startServer() }
         }
 
+        cur = colR
         val g = card("2. Main")
         note(g, "Buka game, tekan Mulai. F8 = jeda/lanjut pemetaan. Mouse disembunyikan saat aktif.")
         btn(g, "Mulai pemetaan", true) {
@@ -137,12 +149,70 @@ class MainActivity : Activity() {
         btn(g, "Layar uji sentuhan") { startActivity(Intent(this, TestPadActivity::class.java)) }
         btn(g, "Putuskan ADB") { AdbHub.disconnect(this); post("Diputus") }
 
+        val wc = card("3. Web Source (suara, bisa dipindah, offline)")
+        note(wc, "Panel web melayang di atas game. Geser lewat bilah atas, ubah ukuran lewat pegangan biru. Bisa memuat situs (butuh internet) atau file HTML/ZIP lokal (offline, suara tetap jalan).")
+        val wUrl = field(wc, "Alamat situs, mis. example.com", "", false)
+        val wName = field(wc, "Nama (opsional)", "", false)
+        btn(wc, "Tambah Web Source", true) {
+            val r = UrlUtil.normalize(wUrl.text.toString())
+            if (r.url == null) toast(r.error ?: "URL tidak valid") else {
+                val l = WebStore.load(this)
+                l.add(SourceItem(name = wName.text.toString().trim().ifBlank { UrlUtil.hostOf(r.url) }, url = r.url).also { it.y = 0.08f + 0.06f * (l.size % 5); it.x = 0.52f - 0.02f * (l.size % 5) })
+                WebStore.save(this, l); wUrl.setText(""); wName.setText(""); refreshWeb()
+            }
+        }
+        btn(wc, "Impor file offline (.html / .zip)") {
+            try {
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+                    .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/html", "application/zip", "application/x-zip-compressed", "application/octet-stream")), 7)
+            } catch (_: Exception) { toast("Pemilih file tidak tersedia") }
+        }
+        webList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        wc.addView(webList)
+        btn(wc, "Tampilkan panel di atas layar", true) {
+            when {
+                !Settings.canDrawOverlays(this) -> toast("Izinkan tampil di atas aplikasi lain dulu")
+                else -> startForegroundService(Intent(this, WebService::class.java))
+            }
+        }
+        btn(wc, "Tutup semua panel") { startService(Intent(this, WebService::class.java).setAction(WebService.ACTION_STOP)) }
+        refreshWeb()
+
         (getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(id: Int) = refresh()
             override fun onInputDeviceRemoved(id: Int) = refresh()
             override fun onInputDeviceChanged(id: Int) = refresh()
         }, ui)
         refresh()
+    }
+
+    private fun refreshWeb() {
+        webList.removeAllViews()
+        val items = WebStore.load(this)
+        if (items.isEmpty()) webList.addView(TextView(this).apply { text = "Belum ada Web Source."; setTextColor(Color.parseColor("#9AA3B2")); textSize = 12.5f; setPadding(0, dp(8), 0, 0) })
+        for (it in items) {
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, 0) }
+            line.addView(TextView(this).apply { text = it.name + "\n" + it.url.take(48); setTextColor(Color.WHITE); textSize = 12.5f }, LinearLayout.LayoutParams(0, -2, 1f))
+            line.addView(Button(this).apply { text = "Hapus"; isAllCaps = false; textSize = 12f; setOnClickListener { _ ->
+                val l = WebStore.load(this@MainActivity); l.removeAll { x -> x.id == it.id }; WebStore.save(this@MainActivity, l); refreshWeb() } }, LinearLayout.LayoutParams(-2, dp(40)))
+            webList.addView(line)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (requestCode != 7 || resultCode != RESULT_OK || uri == null) return
+        Thread {
+            val msg = try {
+                val r = LocalWeb.import(this, uri)
+                val l = WebStore.load(this)
+                l.add(SourceItem(name = r.name, url = r.url).also { it.y = 0.08f + 0.06f * (l.size % 5) })
+                WebStore.save(this, l)
+                "Web Source offline ditambahkan"
+            } catch (e: Exception) { e.message ?: "Gagal mengimpor" }
+            ui.post { toast(msg); refreshWeb() }
+        }.start()
     }
 
     private fun startServer() = AdbHub.startServer(this) { _, m -> post(m) }

@@ -21,7 +21,9 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -46,6 +48,15 @@
         <receiver
             android:name=".PairingService$ReplyReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".WebService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Menampilkan panel Web Source melayang" />
+        </service>
 
         <service
             android:name=".CaptureService"
