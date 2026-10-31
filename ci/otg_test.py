@@ -125,14 +125,15 @@ open("/tmp/web.json", "w").write(json.dumps(web)); run("adb push /tmp/web.json /
 sh(f"cp /data/local/tmp/web.json /data/data/{PKG}/files/web.json && chown {uid}:{uid} /data/data/{PKG}/files/web.json")
 sh("svc wifi disable"); sh("svc data disable"); time.sleep(3)
 run("adb logcat -c")
-sh(f"am start-foreground-service -n {PKG}/.WebService"); time.sleep(14)
+sh(f"am start-foreground-service -n {PKG}/.WebService"); time.sleep(24)
 wl = run("adb logcat -d -s AAStudio:I AAStudio-js:I AAOTG:I", 30)
 info("web log: " + " | ".join(dict.fromkeys(l.split(": ", 1)[-1] for l in wl.splitlines() if "AA_" in l or "page" in l))[:400])
 check("Web Source lokal termuat tanpa internet", "AA_LOAD" in wl, "")
 check("Audio Web Source berbunyi tanpa internet", "AA_PLAYING" in wl, "")
 check("Pengatur suara terpasang di halaman", "AA_HOOK true" in wl, "")
 check("Anti path-traversal pada file lokal", "AA_TRAV 404" in wl, "")
-nodes = [n for n in ui_nodes() if n["text"] == "TestWeb"]
+dens = int(re.search(r"(\d+)", sh("wm density")).group(1)) / 160.0
+nodes = [{"cx": int(0.30 * SW + 0.12 * SW), "cy": int(0.20 * SH + 17 * dens)}]   # tengah bilah judul panel
 before = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
 if nodes:
     n = nodes[0]; sh(f"input swipe {n['cx']} {n['cy']} {n['cx']-120} {n['cy']+90} 500"); time.sleep(2)
