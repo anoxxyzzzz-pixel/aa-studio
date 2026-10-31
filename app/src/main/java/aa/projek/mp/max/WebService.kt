@@ -161,6 +161,14 @@ class WebService : Service() {
         WebStore.save(this, all)
     }
 
+    /** Layar berputar: ukur ulang dan susun ulang panel sesuai pecahan posisi yang tersimpan. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (!running) return
+        val b = wm.currentWindowMetrics.bounds
+        if (b.width() != sw || b.height() != sh) { sw = b.width(); sh = b.height(); rebuild() }
+    }
+
     override fun onDestroy() { clear(); running = false; super.onDestroy() }
 
     companion object {

@@ -133,7 +133,8 @@ check("Audio Web Source berbunyi tanpa internet", "AA_PLAYING" in wl, "")
 check("Pengatur suara terpasang di halaman", "AA_HOOK true" in wl, "")
 check("Anti path-traversal pada file lokal", "AA_TRAV 404" in wl, "")
 dens = int(re.search(r"(\d+)", sh("wm density")).group(1)) / 160.0
-nodes = [{"cx": int(0.30 * SW + 0.12 * SW), "cy": int(0.20 * SH + 17 * dens)}]   # tengah bilah judul panel
+pl = re.search(r"PANEL_ADDED lp=(\d+),(\d+) size=(\d+)x(\d+)", run("adb logcat -d -s AAOTG:I", 30))
+nodes = [{"cx": int(pl.group(1)) + int(pl.group(3)) // 3, "cy": int(pl.group(2)) + int(17 * dens)}] if pl else []   # tengah bilah judul panel
 before = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
 if nodes:
     n = nodes[0]; sh(f"input swipe {n['cx']} {n['cy']} {n['cx']-120} {n['cy']+90} 500"); time.sleep(2)
