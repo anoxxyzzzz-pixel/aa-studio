@@ -94,6 +94,42 @@ sh("am startservice -n %s/.PairingService" % PKG); sh("am start-foreground-servi
 nt = sh("dumpsys notification --noredact")
 check("Notifikasi pairing tampil (mencari layanan pairing)", "Mencari layanan pairing" in nt, "")
 sh("am start-foreground-service -a aa.projek.mp.max.PAIR_STOP -n %s/.PairingService" % PKG); time.sleep(2)
+
+# ---- Web Source offline: halaman lokal + audio, panel bisa digeser (jaringan dimatikan)
+import wave, struct, math
+sh("am start-foreground-service -a aa.projek.mp.max.WEB_STOP -n %s/.WebService" % PKG); sh("am force-stop %s" % PKG); time.sleep(2)
+w = wave.open("/tmp/tone.wav", "w"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+w.writeframes(b"".join(struct.pack("<h", int(12000 * math.sin(2 * math.pi * 440 * i / 22050))) for i in range(22050 * 2))); w.close()
+open("/tmp/index.html", "w").write("""<!doctype html><meta charset=utf-8><body style="background:#123;color:#fff"><h1>OFFLINE OK</h1>
+<audio id=a src="tone.wav" loop autoplay></audio><script>
+var a=document.getElementById('a');window.addEventListener('load',function(){console.log('AA_LOAD');});
+a.addEventListener('playing',function(){console.log('AA_PLAYING');});a.play().catch(function(e){});
+setTimeout(function(){console.log('AA_HOOK '+(!!window.__aaAudio));},7000);
+fetch('/%2e%2e/web.json').then(function(r){console.log('AA_TRAV '+r.status);});
+</script>""")
+run("adb push /tmp/index.html /data/local/tmp/index.html"); run("adb push /tmp/tone.wav /data/local/tmp/tone.wav")
+uid = sh(f"stat -c %U /data/data/{PKG}").strip()
+sh(f"mkdir -p /data/data/{PKG}/files/local/t1 && cp /data/local/tmp/index.html /data/local/tmp/tone.wav /data/data/{PKG}/files/local/t1/ && chown -R {uid}:{uid} /data/data/{PKG}/files")
+web = [{"id": "w1", "name": "TestWeb", "url": "https://aa.local/t1/index.html", "x": 0.30, "y": 0.20, "w": 0.45, "h": 0.5, "visible": True, "muted": False, "volume": 100}]
+open("/tmp/web.json", "w").write(json.dumps(web)); run("adb push /tmp/web.json /data/local/tmp/web.json")
+sh(f"cp /data/local/tmp/web.json /data/data/{PKG}/files/web.json && chown {uid}:{uid} /data/data/{PKG}/files/web.json")
+sh("svc wifi disable"); sh("svc data disable"); time.sleep(3)
+run("adb logcat -c")
+sh(f"am start-foreground-service -n {PKG}/.WebService"); time.sleep(14)
+wl = run("adb logcat -d -s AAStudio:I AAStudio-js:I AAOTG:I", 30)
+info("web log: " + " | ".join(dict.fromkeys(l.split(": ", 1)[-1] for l in wl.splitlines() if "AA_" in l or "page" in l))[:400])
+check("Web Source lokal termuat tanpa internet", "AA_LOAD" in wl, "")
+check("Audio Web Source berbunyi tanpa internet", "AA_PLAYING" in wl, "")
+check("Pengatur suara terpasang di halaman", "AA_HOOK true" in wl, "")
+check("Anti path-traversal pada file lokal", "AA_TRAV 404" in wl, "")
+nodes = [n for n in ui_nodes() if n["text"] == "TestWeb"]
+before = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
+if nodes:
+    n = nodes[0]; sh(f"input swipe {n['cx']} {n['cy']} {n['cx']-120} {n['cy']+90} 500"); time.sleep(2)
+after = json.loads(sh(f"cat /data/data/{PKG}/files/web.json"))[0]
+info(f"geser: judul ditemukan={bool(nodes)} x {before['x']}->{after['x']:.3f} y {before['y']}->{after['y']:.3f}")
+check("Panel Web Source bisa digeser & posisinya tersimpan", bool(nodes) and (abs(after["x"] - before["x"]) > 0.02 or abs(after["y"] - before["y"]) > 0.02), "")
+sh("svc wifi enable"); sh("svc data enable")
 p.stdin.write("q\n"); p.stdin.flush()
 check("Tidak ada crash", not crashes(), "; ".join(crashes()))
 fails = [n for n, ok in RESULTS if not ok]
