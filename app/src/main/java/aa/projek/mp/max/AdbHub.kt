@@ -98,7 +98,9 @@ object AdbHub {
         }
 
     private fun stopServerInternal() {
-        try { queue.clear(); queue.offer("q") } catch (_: Throwable) {}
+        // Kirim "q" langsung ke server lama (bukan lewat antrean, agar tidak terbawa ke server baru).
+        try { out?.let { it.write("q\n".toByteArray()); it.flush() } } catch (_: Throwable) {}
+        queue.clear()
         writer?.interrupt(); writer = null
         try { out?.close() } catch (_: Throwable) {}
         out = null; serverReady = false
