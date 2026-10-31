@@ -88,6 +88,12 @@ info("max jari serentak: %d, ids: %s" % (maxp, list(idsseen)[:8]))
 check("Sentuhan hasil injeksi sampai ke layar (TestPad menerima)", len(tp) > 0, f"{len(tp)} event")
 check("Multi-jari: joystick + kamera + tembak serentak (>=3 jari)", maxp >= 3, f"maks {maxp}")
 check("Setelah semua dilepas tidak ada jari tertinggal", tp and "pointers=1" in tp[-1] and ("action=1" in tp[-1] or "action=6" in tp[-1]) or (tp and "action=1 " in tp[-1]), tp[-1].split("AAOTG")[-1].strip() if tp else "")
+
+# pairing lewat notifikasi: layanan mulai, notifikasi tampil, tidak crash (pairing asli tidak ada di emulator)
+sh("am startservice -n %s/.PairingService" % PKG); sh("am start-foreground-service -n %s/.PairingService" % PKG); time.sleep(4)
+nt = sh("dumpsys notification --noredact")
+check("Notifikasi pairing tampil (mencari layanan pairing)", "Mencari layanan pairing" in nt, "")
+sh("am start-foreground-service -a aa.projek.mp.max.PAIR_STOP -n %s/.PairingService" % PKG); time.sleep(2)
 p.stdin.write("q\n"); p.stdin.flush()
 check("Tidak ada crash", not crashes(), "; ".join(crashes()))
 fails = [n for n, ok in RESULTS if not ok]
